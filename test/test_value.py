@@ -114,3 +114,19 @@ def test_negative_pow():
     val = val1 ** -1
 
     assert val.data == 0.5
+
+def test_neg():
+    val1 = Value(10)
+
+    val = -val1
+
+    assert val.data == -10
+    assert val.op == '*'
+
+def test_div():
+    val1 = Value(10)
+    val2 = Value(2)
+
+    val = val1 / val2
+
+    assert val.data == 5

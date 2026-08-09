@@ -72,4 +72,9 @@ class Value:
         )
 
         return out
-        
+
+    def __neg__(self):
+        return self * -1
+
+    def __truediv__(self, other):
+        return self * (other ** -1)
