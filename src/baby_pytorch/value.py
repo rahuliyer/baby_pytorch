@@ -3,10 +3,11 @@ import string
 
 
 class Value:
-    def __init__(self, data, children=[], op='', label=''):
+    def __init__(self, data, children=[], op='', requires_grad=True, label=''):
         self.data = data
         self.children = children
         self.op = op
+        self.requires_grad = requires_grad
 
         if label != '':
             self.label = label
@@ -20,8 +21,11 @@ class Value:
     def __repr__(self):
         return f"<Value(data: {self.data} label: \"{self.label}\">"
 
+    def __getValue(self, val):
+        return Value(val, requires_grad=False) if type(val) is not Value else val
+
     def __add__(self, other):
-        other = Value(other) if type(other) is not Value else other
+        other = self.__getValue(other)
 
         out = Value(
                 data=self.data + other.data,
@@ -35,7 +39,7 @@ class Value:
         return self.__add__(other)
 
     def __sub__(self, other):
-        other = Value(other) if type(other) is not Value else other
+        other = self.__getValue(other)
 
         out = Value(
                 data=self.data - other.data,
@@ -49,7 +53,7 @@ class Value:
         return self.__sub__(other)
 
     def __mul__(self, other):
-        other = Value(other) if type(other) is not Value else other
+        other = self.__getValue(other)
 
         out = Value(
                 data=self.data * other.data,
@@ -63,7 +67,7 @@ class Value:
         return self.__mul__(other)
 
     def __pow__(self, other):
-        other = Value(other) if type(other) is not Value else other
+        other = self.__getValue(other)
 
         out = Value(
                 data=self.data ** other.data,
