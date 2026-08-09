@@ -61,3 +61,15 @@ class Value:
 
     def __rmul__(self, other):
         return self.__mul__(other)
+
+    def __pow__(self, other):
+        other = Value(other) if type(other) is not Value else other
+
+        out = Value(
+                data=self.data ** other.data,
+                children=[],
+                op='**'
+        )
+
+        return out
+        
