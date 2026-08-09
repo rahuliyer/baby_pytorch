@@ -35,3 +35,67 @@ def test_repr():
     val = Value(42, label="val")
 
     assert val.__repr__() == "<Value(data: 42 label: \"val\">"
+
+def test_add():
+    val1 = Value(10)
+    val2 = Value(20)
+
+    val = val1 + val2
+
+    assert val.data == 30
+    assert val.op == '+'
+    assert val.children == [val1, val2]
+
+
+def test_add_constant():
+    val1 = Value(10)
+
+    val = 20 + val1
+
+    assert val.data == 30
+    assert val.op == '+'
+    assert len(val.children) == 2
+    assert val1 in val.children
+
+def test_sub():
+    val1 = Value(10)
+    val2 = Value(20)
+
+    val = val1 - val2
+
+    assert val.data == -10
+    assert val.op == '-'
+    assert val.children == [val1, val2]
+
+def test_sub_constant():
+    val1 = Value(10)
+
+    val = 20 - val1
+
+    assert val.data == -10 
+    assert val.op == '-'
+    assert len(val.children) == 2
+    assert val1 in val.children
+
+
+def test_mul():
+    val1 = Value(10)
+    val2 = Value(20)
+
+    val = val1 * val2
+
+    assert val.data == 200
+    assert val.op == '*'
+    assert val.children == [val1, val2]
+
+
+def test_rmul():
+    val1 = Value(10)
+
+    val = 20 * val1
+
+    assert val.data == 200
+    assert val.op == '*'
+    assert len(val.children) == 2
+    assert val1 in val.children
+

@@ -19,3 +19,45 @@ class Value:
 
     def __repr__(self):
         return f"<Value(data: {self.data} label: \"{self.label}\">"
+
+    def __add__(self, other):
+        other = Value(other) if type(other) is not Value else other
+
+        out = Value(
+                data=self.data + other.data,
+                children=[self, other],
+                op='+'
+        )
+
+        return out
+
+    def __radd__(self, other):
+        return self.__add__(other)
+
+    def __sub__(self, other):
+        other = Value(other) if type(other) is not Value else other
+
+        out = Value(
+                data=self.data - other.data,
+                children=[self, other],
+                op='-'
+        )
+
+        return out
+
+    def __rsub__(self, other):
+        return self.__sub__(other)
+
+    def __mul__(self, other):
+        other = Value(other) if type(other) is not Value else other
+
+        out = Value(
+                data=self.data * other.data,
+                children=[self, other],
+                op='*'
+        )
+
+        return out
+
+    def __rmul__(self, other):
+        return self.__mul__(other)
