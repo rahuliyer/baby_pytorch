@@ -1,6 +1,6 @@
 from baby_pytorch.value import Value
 
-def test_value_data():
+def test_value_graph():
     val1 = Value(10)
     val2 = val1 ** 2
 
@@ -20,7 +20,7 @@ def test_value_data():
 
     assert val1 in val2.children
 
-def test_value_children():
+def test_value_repeated_children():
     val1 = Value(10)
 
     val = val1 * val1
@@ -29,3 +29,16 @@ def test_value_children():
     assert len(val.children) == 2
     assert val.children[0] == val1
     assert val.children[1] == val1
+
+def test_value_grad():
+    val1 = Value(10)
+    val2 = val1 * 2
+
+    assert val2.data == 20
+    assert len(val2.children) == 2
+
+    for child in val2.children:
+        if child == val1:
+            assert child.requires_grad == True
+        else:
+            assert child.requires_grad == False
