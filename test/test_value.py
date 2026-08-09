@@ -72,7 +72,7 @@ def test_sub_constant():
 
     val = 20 - val1
 
-    assert val.data == -10 
+    assert val.data == 10
     assert val.op == '-'
     assert len(val.children) == 2
     assert val1 in val.children
@@ -106,7 +106,7 @@ def test_pow():
 
     assert val.data == 100
     assert val.op == '**'
-    assert len(val.children) == 1
+    assert len(val.children) == 2
 
 def test_negative_pow():
     val1 = Value(2)
