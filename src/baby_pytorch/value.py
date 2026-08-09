@@ -18,4 +18,4 @@ class Value:
             self.label = f'val_{suffix}'
 
     def __repr__(self):
-        return f"Value data: {self.data} label: {self.label}"
+        return f"<Value(data: {self.data} label: \"{self.label}\">"

@@ -31,3 +31,7 @@ def test_value_no_label():
     assert len(val.label) != 0
     assert "val_" in val.label
 
+def test_repr():
+    val = Value(42, label="val")
+
+    assert val.__repr__() == "<Value(data: 42 label: \"val\">"
