@@ -71,7 +71,7 @@ class Value:
 
         out = Value(
                 data=self.data ** other.data,
-                children=[],
+                children=[self],
                 op='**'
         )
 

@@ -106,7 +106,7 @@ def test_pow():
 
     assert val.data == 100
     assert val.op == '**'
-    assert len(val.children) == 0
+    assert len(val.children) == 1
 
 def test_negative_pow():
     val1 = Value(2)
@@ -130,3 +130,10 @@ def test_div():
     val = val1 / val2
 
     assert val.data == 5
+
+def test_requires_grad():
+    val1 = Value(10)
+    val2 = Value(20, requires_grad=False)
+
+    assert val1.requires_grad == True
+    assert val2.requires_grad == False
