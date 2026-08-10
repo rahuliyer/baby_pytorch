@@ -134,6 +134,8 @@ def test_div():
 def test_requires_grad():
     val1 = Value(10)
     val2 = Value(20, requires_grad=False)
+    val3 = Value(30, requires_grad=True)
 
-    assert val1.requires_grad == True
+    assert val1.requires_grad == False
     assert val2.requires_grad == False
+    assert val3.requires_grad == True

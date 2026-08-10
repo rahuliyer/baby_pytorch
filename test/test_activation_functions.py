@@ -38,7 +38,7 @@ def test_relu():
     assert y.op == 'relu'
 
 def test_relu_at_zero_and_negative():
-    x = Value(-2.0)
+    x = Value(-2.0, requires_grad=True)
     y = relu(x)
 
     y.backward()
