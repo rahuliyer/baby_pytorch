@@ -3,6 +3,7 @@ import math
 import pytest
 
 from baby_pytorch.value import Value
+from baby_pytorch.activation_functions import tanh, sigmoid, relu
 
 
 def test_chain_rule_for_all_binary_operations():
@@ -60,3 +61,12 @@ def test_repeated_backward_accumulates_leaf_gradients_linearly():
     y.backward()
 
     assert x.grad == pytest.approx(12.0)
+
+def test_activation_function_backward():
+    for v, f, expected in [(2.0, tanh, 0.7065082485316443),
+                    (2.0, sigmoid, 1.0499358540350662),
+                    (2.0, relu, 10.0),
+                    (-2.0, relu, 0)]:
+        x = Value(v)
+        (10 * f(x)).backward()
+        assert x.grad == pytest.approx(expected)

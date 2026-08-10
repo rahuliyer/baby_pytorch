@@ -30,6 +30,15 @@ def calculate_child_gradients(val):
                 val.children[1].grad += (
                     val.grad * val.data * math.log(val.children[0].data)
                 )
+        case 'tanh':
+            if val.children[0].requires_grad:
+                val.children[0].grad += val.grad * (1 - val.data ** 2)
+        case 'sigmoid':
+            if val.children[0].requires_grad:
+                val.children[0].grad += val.grad * (val.data * (1 - val.data))
+        case 'relu':
+            if val.children[0].requires_grad:
+                val.children[0].grad += val.grad if val.data > 0 else 0
         case '':
             pass
         case _:
