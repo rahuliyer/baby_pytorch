@@ -31,7 +31,7 @@ def test_value_repeated_children():
     assert val.children[1] == val1
 
 def test_value_grad():
-    val1 = Value(10)
+    val1 = Value(10, requires_grad=True)
     val2 = val1 * 2
 
     assert val2.data == 20

@@ -7,7 +7,7 @@ from baby_pytorch.activation_functions import tanh, sigmoid, relu
 
 
 def test_chain_rule_for_all_binary_operations():
-    x = Value(2.0)
+    x = Value(2.0, requires_grad=True)
     y = 3 * ((x + 1) * (x - 4))
 
     y.backward()
@@ -16,8 +16,8 @@ def test_chain_rule_for_all_binary_operations():
 
 
 def test_power_gradients_for_base_and_exponent():
-    base = Value(2.0)
-    exponent = Value(3.0)
+    base = Value(2.0, requires_grad=True)
+    exponent = Value(3.0, requires_grad=True)
 
     (4 * (base**exponent)).backward()
 
@@ -26,7 +26,7 @@ def test_power_gradients_for_base_and_exponent():
 
 
 def test_shared_nodes_are_processed_once():
-    x = Value(3.0)
+    x = Value(3.0, requires_grad=True)
     square = x * x
 
     (square + square).backward()
@@ -35,13 +35,17 @@ def test_shared_nodes_are_processed_once():
 
 
 def test_scalar_division_and_reverse_arithmetic():
-    x = Value(2.0)
+    x = Value(2.0, requires_grad=True)
 
     y = (10 - x) + (12 / x) + (x / 2)
     y.backward()
 
     assert y.data == pytest.approx(15.0)
     assert x.grad == pytest.approx(-3.5)
+
+
+def test_values_do_not_require_grad_by_default():
+    assert not Value(2.0).requires_grad
 
 
 def test_result_does_not_require_grad_when_operands_do_not():
@@ -53,8 +57,17 @@ def test_result_does_not_require_grad_when_operands_do_not():
     assert not (left**right).requires_grad
 
 
+def test_result_requires_grad_when_any_operand_does():
+    tracked = Value(2.0, requires_grad=True)
+    plain = Value(3.0)
+
+    assert (plain + tracked).requires_grad
+    assert (tracked * plain).requires_grad
+    assert (plain**tracked).requires_grad
+
+
 def test_repeated_backward_accumulates_leaf_gradients_linearly():
-    x = Value(2.0)
+    x = Value(2.0, requires_grad=True)
     y = (x * 2) * 3
 
     y.backward()
@@ -67,6 +80,6 @@ def test_activation_function_backward():
                     (2.0, sigmoid, 1.0499358540350662),
                     (2.0, relu, 10.0),
                     (-2.0, relu, 0)]:
-        x = Value(v)
+        x = Value(v, requires_grad=True)
         (10 * f(x)).backward()
         assert x.grad == pytest.approx(expected)

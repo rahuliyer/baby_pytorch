@@ -5,7 +5,7 @@ from baby_pytorch.functions import topo_sort
 from baby_pytorch.functions import calculate_child_gradients
 
 class Value:
-    def __init__(self, data, children=None, op='', requires_grad=True, label=''):
+    def __init__(self, data, children=None, op='', requires_grad=False, label=''):
         self.data = data
         self.children = [] if children is None else children
         self.op = op
