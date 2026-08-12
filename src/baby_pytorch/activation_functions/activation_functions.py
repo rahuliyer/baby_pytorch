@@ -12,8 +12,11 @@ def tanh(x):
     return out
 
 def sigmoid(x):
-    e_x = math.exp(x.data)
-    val = 1.0 / (1 + math.exp(-1 * x.data)) if x.data > 0 else e_x/ (1 + e_x)
+    if x.data > 0:
+        val = 1.0 / (1 + math.exp(-1 * x.data))
+    else:
+        e_x = math.exp(x.data)
+        val = e_x / (1 + e_x)
 
     out = Value(
         data=val,
