@@ -1,3 +1,7 @@
+import sys
+
+import pytest
+
 from baby_pytorch.tensor import Tensor
 
 def test_tensor_graph():
@@ -42,3 +46,17 @@ def test_tensor_grad():
             assert child.requires_grad == True
         else:
             assert child.requires_grad == False
+
+
+def test_topo_sort_handles_deep_graphs():
+    # A graph deeper than the interpreter's recursion limit; a recursive
+    # topological sort would blow the stack here.
+    t = Tensor(1.0, requires_grad=True)
+
+    out = t
+    for _ in range(sys.getrecursionlimit() * 10):
+        out = out + 1
+
+    out.backward()
+
+    assert t.grad == pytest.approx(1.0)
