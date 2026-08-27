@@ -1,14 +1,14 @@
 import random
 
-from baby_pytorch.value import Value
+from baby_pytorch.tensor import Tensor
 
 class Neuron:
     def __init__(self, in_size):
         self.weights = [
-            Value(random.uniform(-1, 1), requires_grad=True)
+            Tensor(random.uniform(-1, 1), requires_grad=True)
                   for _ in range(in_size)
         ]
-        self.bias = Value(random.uniform(-1, 1), requires_grad=True)
+        self.bias = Tensor(random.uniform(-1, 1), requires_grad=True)
 
     def __call__(self, input):
         if len(input) != len(self.weights):

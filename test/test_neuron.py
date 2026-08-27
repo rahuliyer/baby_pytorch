@@ -1,5 +1,5 @@
 from baby_pytorch.nn import Neuron
-from baby_pytorch.value import Value
+from baby_pytorch.tensor import Tensor
 
 import pytest
 
@@ -13,11 +13,11 @@ def test_neuron_size_match():
 def test_neuron_output():
     neuron = Neuron(in_size=3)
     neuron.weights = [
-        Value(0.5, requires_grad=True),
-        Value(-0.5, requires_grad=True),
-        Value(1.0, requires_grad=True)
+        Tensor(0.5, requires_grad=True),
+        Tensor(-0.5, requires_grad=True),
+        Tensor(1.0, requires_grad=True)
     ]
-    neuron.bias = Value(0.25, requires_grad=True)
+    neuron.bias = Tensor(0.25, requires_grad=True)
     input = [1, 2, 3]
 
     output = neuron(input)

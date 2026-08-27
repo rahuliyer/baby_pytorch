@@ -1,10 +1,10 @@
-from baby_pytorch.value import Value
+from baby_pytorch.tensor import Tensor
 from baby_pytorch.activation_functions import tanh, sigmoid, relu
 
 import pytest
 
 def test_tanh():
-    x = Value(2)
+    x = Tensor(2)
 
     y = tanh(x)
 
@@ -14,7 +14,7 @@ def test_tanh():
     assert y.op == 'tanh'
 
 def test_sigmoid():
-    x = Value(2)
+    x = Tensor(2)
 
     y = sigmoid(x)
 
@@ -24,11 +24,11 @@ def test_sigmoid():
     assert y.op == 'sigmoid'
 
 def test_sigmoid_negative_and_zero():
-    assert sigmoid(Value(0.0)).data == pytest.approx(0.5)
-    assert sigmoid(Value(-2.0)).data == pytest.approx(0.11920292202211755)
+    assert sigmoid(Tensor(0.0)).data == pytest.approx(0.5)
+    assert sigmoid(Tensor(-2.0)).data == pytest.approx(0.11920292202211755)
 
 def test_relu():
-    x = Value(2)
+    x = Tensor(2)
 
     y = relu(x)
 
@@ -38,7 +38,7 @@ def test_relu():
     assert y.op == 'relu'
 
 def test_relu_at_zero_and_negative():
-    x = Value(-2.0, requires_grad=True)
+    x = Tensor(-2.0, requires_grad=True)
     y = relu(x)
 
     y.backward()

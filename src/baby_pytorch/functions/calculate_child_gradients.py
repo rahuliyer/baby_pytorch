@@ -1,47 +1,49 @@
 import math
 
 
-def calculate_child_gradients(val):
-    match val.op:
+def calculate_child_gradients(tensor):
+    match tensor.op:
         case '+':
-            if val.children[0].requires_grad:
-                val.children[0].grad += val.grad
+            if tensor.children[0].requires_grad:
+                tensor.children[0].grad += tensor.grad
 
-            if val.children[1].requires_grad:
-                val.children[1].grad += val.grad
+            if tensor.children[1].requires_grad:
+                tensor.children[1].grad += tensor.grad
         case '-':
-            if val.children[0].requires_grad:
-                val.children[0].grad += val.grad
+            if tensor.children[0].requires_grad:
+                tensor.children[0].grad += tensor.grad
 
-            if val.children[1].requires_grad:
-                val.children[1].grad -= val.grad
+            if tensor.children[1].requires_grad:
+                tensor.children[1].grad -= tensor.grad
         case '*':
-            if val.children[0].requires_grad:
-                val.children[0].grad += val.grad * val.children[1].data
+            if tensor.children[0].requires_grad:
+                tensor.children[0].grad += tensor.grad * tensor.children[1].data
 
-            if val.children[1].requires_grad:
-                val.children[1].grad += val.grad * val.children[0].data
+            if tensor.children[1].requires_grad:
+                tensor.children[1].grad += tensor.grad * tensor.children[0].data
         case '**':
-            if val.children[0].requires_grad:
-                val.children[0].grad += val.grad * val.children[1].data * (
-                            val.children[0].data ** (val.children[1].data - 1)
+            if tensor.children[0].requires_grad:
+                tensor.children[0].grad += tensor.grad * tensor.children[1].data * (
+                            tensor.children[0].data ** (tensor.children[1].data - 1)
                     )
-            if val.children[1].requires_grad:
-                val.children[1].grad += (
-                    val.grad * val.data * math.log(val.children[0].data)
+            if tensor.children[1].requires_grad:
+                tensor.children[1].grad += (
+                    tensor.grad * tensor.data * math.log(tensor.children[0].data)
                 )
         case 'tanh':
-            if val.children[0].requires_grad:
-                val.children[0].grad += val.grad * (1 - val.data ** 2)
+            if tensor.children[0].requires_grad:
+                tensor.children[0].grad += tensor.grad * (1 - tensor.data ** 2)
         case 'sigmoid':
-            if val.children[0].requires_grad:
-                val.children[0].grad += val.grad * (val.data * (1 - val.data))
+            if tensor.children[0].requires_grad:
+                tensor.children[0].grad += (
+                    tensor.grad * (tensor.data * (1 - tensor.data))
+                )
         case 'relu':
-            if val.children[0].requires_grad:
-                val.children[0].grad += val.grad if val.data > 0 else 0
+            if tensor.children[0].requires_grad:
+                tensor.children[0].grad += tensor.grad if tensor.data > 0 else 0
         case '':
             pass
         case _:
-            raise ValueError(f"Unsupported op: {val.op}")
+            raise ValueError(f"Unsupported op: {tensor.op}")
             
             

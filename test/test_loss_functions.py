@@ -1,5 +1,5 @@
 from baby_pytorch.loss import MSE
-from baby_pytorch import Value
+from baby_pytorch import Tensor
 
 import pytest
 
@@ -12,9 +12,9 @@ def test_mse_unequal_length():
 
 def test_mse_calculation():
     predictions = [
-        Value(1, requires_grad=True),
-        Value(2, requires_grad=True),
-        Value(3, requires_grad=True)
+        Tensor(1, requires_grad=True),
+        Tensor(2, requires_grad=True),
+        Tensor(3, requires_grad=True)
     ]
 
     targets = [1, 2, 4]

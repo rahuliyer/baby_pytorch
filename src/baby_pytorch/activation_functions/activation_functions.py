@@ -1,8 +1,8 @@
 import math
-from baby_pytorch.value import Value
+from baby_pytorch.tensor import Tensor
 
 def tanh(x):
-    out = Value(
+    out = Tensor(
         data=math.tanh(x.data),
         op='tanh',
         children=[x],
@@ -18,7 +18,7 @@ def sigmoid(x):
         e_x = math.exp(x.data)
         val = e_x / (1 + e_x)
 
-    out = Value(
+    out = Tensor(
         data=val,
         op='sigmoid',
         children=[x],
@@ -28,7 +28,7 @@ def sigmoid(x):
     return out
 
 def relu(x):
-    out = Value(
+    out = Tensor(
         data=max(0, x.data),
         op='relu',
         children=[x],

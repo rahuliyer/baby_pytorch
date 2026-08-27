@@ -4,7 +4,7 @@ import string
 from baby_pytorch.functions import topo_sort
 from baby_pytorch.functions import calculate_child_gradients
 
-class Value:
+class Tensor:
     def __init__(self, data, children=None, op='', requires_grad=False, label=''):
         self.data = data
         self.children = [] if children is None else children
@@ -19,18 +19,21 @@ class Value:
                 random.choice(string.ascii_lowercase + string.digits)
                 for _ in range(4)
             )
-            self.label = f'val_{suffix}'
+            self.label = f'tensor_{suffix}'
 
     def __repr__(self):
-        return f"<Value(data: {self.data} label: \"{self.label}\">"
+        return f"<Tensor(data: {self.data} label: \"{self.label}\">"
 
-    def __getValue(self, val):
-        return Value(val, requires_grad=False) if not isinstance(val, Value) else val
+    def __getTensor(self, value):
+        if isinstance(value, Tensor):
+            return value
+
+        return Tensor(value, requires_grad=False)
 
     def __add__(self, other):
-        other = self.__getValue(other)
+        other = self.__getTensor(other)
 
-        out = Value(
+        out = Tensor(
                 data=self.data + other.data,
                 children=[self, other],
                 op='+',
@@ -43,9 +46,9 @@ class Value:
         return self.__add__(other)
 
     def __sub__(self, other):
-        other = self.__getValue(other)
+        other = self.__getTensor(other)
 
-        out = Value(
+        out = Tensor(
                 data=self.data - other.data,
                 children=[self, other],
                 op='-',
@@ -55,13 +58,13 @@ class Value:
         return out
 
     def __rsub__(self, other):
-        other = self.__getValue(other)
+        other = self.__getTensor(other)
         return other.__sub__(self)
 
     def __mul__(self, other):
-        other = self.__getValue(other)
+        other = self.__getTensor(other)
 
-        out = Value(
+        out = Tensor(
                 data=self.data * other.data,
                 children=[self, other],
                 op='*',
@@ -74,9 +77,9 @@ class Value:
         return self.__mul__(other)
 
     def __pow__(self, other):
-        other = self.__getValue(other)
+        other = self.__getTensor(other)
 
-        out = Value(
+        out = Tensor(
                 data=self.data ** other.data,
                 children=[self, other],
                 op='**',
@@ -89,11 +92,11 @@ class Value:
         return self * -1
 
     def __truediv__(self, other):
-        other = self.__getValue(other)
+        other = self.__getTensor(other)
         return self * (other ** -1)
 
     def __rtruediv__(self, other):
-        other = self.__getValue(other)
+        other = self.__getTensor(other)
         return other.__truediv__(self)
 
     def backward(self):
