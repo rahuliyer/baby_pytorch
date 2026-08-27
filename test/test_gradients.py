@@ -206,3 +206,196 @@ def test_repeated_backward_accumulates_reduced_leaf_gradients():
 
     np.testing.assert_array_equal(matrix.grad, np.full((2, 3), 2.0))
     np.testing.assert_array_equal(row.grad, [4, 4, 4])
+
+
+def test_matmul_backward_for_vector_dot_product():
+    left = Tensor([1, 2, 3], requires_grad=True)
+    right = Tensor([4, 5, 6], requires_grad=True)
+
+    (left @ right).backward()
+
+    np.testing.assert_array_equal(left.grad, right.data)
+    np.testing.assert_array_equal(right.grad, left.data)
+
+
+def test_matmul_backward_for_matrix_by_vector():
+    matrix = Tensor([[1, 2, 3], [4, 5, 6]], requires_grad=True)
+    vector = Tensor([7, 8, 9], requires_grad=True)
+
+    (matrix @ vector).backward()
+
+    np.testing.assert_array_equal(matrix.grad, [[7, 8, 9], [7, 8, 9]])
+    np.testing.assert_array_equal(vector.grad, [5, 7, 9])
+    assert matrix.grad.shape == matrix.shape
+    assert vector.grad.shape == vector.shape
+
+
+def test_matmul_backward_for_vector_by_matrix():
+    vector = Tensor([1, 2], requires_grad=True)
+    matrix = Tensor([[3, 4, 5], [6, 7, 8]], requires_grad=True)
+
+    (vector @ matrix).backward()
+
+    np.testing.assert_array_equal(vector.grad, [12, 21])
+    np.testing.assert_array_equal(matrix.grad, [[1, 1, 1], [2, 2, 2]])
+
+
+def test_matmul_backward_for_matrix_by_matrix():
+    left = Tensor([[1, 2, 3], [4, 5, 6]], requires_grad=True)
+    right = Tensor([[7, 8], [9, 10], [11, 12]], requires_grad=True)
+
+    (left @ right).backward()
+
+    np.testing.assert_array_equal(left.grad, [[15, 19, 23], [15, 19, 23]])
+    np.testing.assert_array_equal(right.grad, [[5, 5], [7, 7], [9, 9]])
+    assert left.grad.shape == left.shape
+    assert right.grad.shape == right.shape
+
+
+def test_matmul_backward_for_batched_matrices():
+    left_data = np.arange(12).reshape(2, 2, 3)
+    right_data = np.arange(12).reshape(2, 3, 2)
+    left = Tensor(left_data, requires_grad=True)
+    right = Tensor(right_data, requires_grad=True)
+
+    result = left @ right
+    result.backward()
+
+    upstream = np.ones(result.shape)
+    expected_left = np.matmul(upstream, np.swapaxes(right_data, -1, -2))
+    expected_right = np.matmul(np.swapaxes(left_data, -1, -2), upstream)
+    np.testing.assert_array_equal(left.grad, expected_left)
+    np.testing.assert_array_equal(right.grad, expected_right)
+
+
+def test_matmul_backward_for_batched_matrices_by_a_shared_vector():
+    matrices = Tensor(
+        np.arange(12).reshape(2, 2, 3),
+        requires_grad=True,
+    )
+    vector = Tensor([1, 2, 3], requires_grad=True)
+
+    result = matrices @ vector
+    result.backward()
+
+    np.testing.assert_array_equal(
+        matrices.grad,
+        [
+            [[1, 2, 3], [1, 2, 3]],
+            [[1, 2, 3], [1, 2, 3]],
+        ],
+    )
+    np.testing.assert_array_equal(vector.grad, [18, 22, 26])
+    assert matrices.grad.shape == matrices.shape
+    assert vector.grad.shape == vector.shape
+
+
+def test_matmul_backward_for_a_shared_vector_by_batched_matrices():
+    vector = Tensor([1, 2, 3], requires_grad=True)
+    matrices = Tensor(
+        np.arange(12).reshape(2, 3, 2),
+        requires_grad=True,
+    )
+
+    result = vector @ matrices
+    result.backward()
+
+    np.testing.assert_array_equal(vector.grad, [14, 22, 30])
+    np.testing.assert_array_equal(
+        matrices.grad,
+        [
+            [[1, 1], [2, 2], [3, 3]],
+            [[1, 1], [2, 2], [3, 3]],
+        ],
+    )
+    assert vector.grad.shape == vector.shape
+    assert matrices.grad.shape == matrices.shape
+
+
+def test_matmul_backward_reduces_a_broadcast_batch_gradient():
+    left_data = np.arange(12).reshape(2, 2, 3)
+    right_data = np.arange(6).reshape(3, 2)
+    left = Tensor(left_data, requires_grad=True)
+    right = Tensor(right_data, requires_grad=True)
+
+    result = left @ right
+    result.backward()
+
+    upstream = np.ones(result.shape)
+    expected_left = np.matmul(upstream, right_data.T)
+    expected_right = np.matmul(
+        np.swapaxes(left_data, -1, -2), upstream
+    ).sum(axis=0)
+    np.testing.assert_array_equal(left.grad, expected_left)
+    np.testing.assert_array_equal(right.grad, expected_right)
+    assert right.grad.shape == right.shape
+
+
+def test_matmul_backward_uses_upstream_gradient_from_a_larger_graph():
+    left = Tensor([[1, 2], [3, 4]], requires_grad=True)
+    right = Tensor([[5, 6], [7, 8]], requires_grad=True)
+    weights = Tensor([[1, 2], [3, 4]])
+
+    result = (left @ right) * weights
+    result.backward()
+
+    np.testing.assert_array_equal(left.grad, weights.data @ right.data.T)
+    np.testing.assert_array_equal(right.grad, left.data.T @ weights.data)
+
+
+def test_vector_matmul_backward_uses_nonuniform_upstream_gradient():
+    vector = Tensor([1, 2], requires_grad=True)
+    matrix = Tensor([[3, 4, 5], [6, 7, 8]], requires_grad=True)
+    weights = Tensor([2, 3, 4])
+
+    result = (vector @ matrix) * weights
+    result.backward()
+
+    np.testing.assert_array_equal(vector.grad, [38, 65])
+    np.testing.assert_array_equal(matrix.grad, [[2, 3, 4], [4, 6, 8]])
+
+
+def test_matmul_backward_reduces_broadcast_dimensions_for_both_operands():
+    left_data = np.arange(12).reshape(2, 1, 2, 3)
+    right_data = np.arange(24).reshape(1, 4, 3, 2)
+    left = Tensor(left_data, requires_grad=True)
+    right = Tensor(right_data, requires_grad=True)
+
+    result = left @ right
+    result.backward()
+
+    upstream = np.ones(result.shape)
+    expected_left = np.matmul(
+        upstream,
+        np.swapaxes(right_data, -1, -2),
+    ).sum(axis=1, keepdims=True)
+    expected_right = np.matmul(
+        np.swapaxes(left_data, -1, -2),
+        upstream,
+    ).sum(axis=0, keepdims=True)
+    np.testing.assert_array_equal(left.grad, expected_left)
+    np.testing.assert_array_equal(right.grad, expected_right)
+    assert left.grad.shape == left.shape
+    assert right.grad.shape == right.shape
+
+
+def test_matmul_backward_only_updates_operands_that_require_grad():
+    left = Tensor([[1, 2], [3, 4]], requires_grad=True)
+    right = Tensor([[5, 6], [7, 8]], requires_grad=False)
+
+    (left @ right).backward()
+
+    np.testing.assert_array_equal(left.grad, [[11, 15], [11, 15]])
+    np.testing.assert_array_equal(right.grad, np.zeros((2, 2)))
+
+
+def test_repeated_matmul_backward_accumulates_leaf_gradients():
+    left = Tensor([[1, 2], [3, 4]], requires_grad=True)
+    right = Tensor([[5, 6], [7, 8]], requires_grad=True)
+    result = left @ right
+
+    result.backward()
+    result.backward()
+
+    np.testing.assert_array_equal(left.grad, [[22, 30], [22, 30]])
+    np.testing.assert_array_equal(right.grad, [[8, 8], [12, 12]])

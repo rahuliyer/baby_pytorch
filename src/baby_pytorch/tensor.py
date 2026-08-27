@@ -107,6 +107,16 @@ class Tensor:
         other = self.__getTensor(other)
         return other.__truediv__(self)
 
+    def __matmul__(self, other):
+        out = Tensor(
+            data=np.matmul(self.data, other.data),
+            children=[self, other],
+            op='matmul',
+            requires_grad=self.requires_grad or other.requires_grad
+        )
+
+        return out
+    
     def backward(self):
         nodes = topo_sort(self)
         nodes.reverse()

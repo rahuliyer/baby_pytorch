@@ -1,3 +1,6 @@
+import numpy as np
+import pytest
+
 from baby_pytorch.tensor import Tensor
 
 def test_tensor_data():
@@ -139,3 +142,95 @@ def test_requires_grad():
     assert t1.requires_grad == False
     assert t2.requires_grad == False
     assert t3.requires_grad == True
+
+
+def test_matmul_vector_dot_product():
+    left = Tensor([1, 2, 3])
+    right = Tensor([4, 5, 6])
+
+    result = left @ right
+
+    assert result.data == pytest.approx(32)
+    assert result.shape == ()
+
+
+def test_matmul_matrix_by_vector():
+    matrix = Tensor([[1, 2, 3], [4, 5, 6]])
+    vector = Tensor([1, 2, 3])
+
+    result = matrix @ vector
+
+    np.testing.assert_array_equal(result.data, [14, 32])
+    assert result.shape == (2,)
+
+
+def test_matmul_vector_by_matrix():
+    vector = Tensor([1, 2])
+    matrix = Tensor([[3, 4, 5], [6, 7, 8]])
+
+    result = vector @ matrix
+
+    np.testing.assert_array_equal(result.data, [15, 18, 21])
+    assert result.shape == (3,)
+
+
+def test_matmul_matrix_by_matrix():
+    left = Tensor([[1, 2, 3], [4, 5, 6]])
+    right = Tensor([[7, 8], [9, 10], [11, 12]])
+
+    result = left @ right
+
+    np.testing.assert_array_equal(result.data, [[58, 64], [139, 154]])
+    assert result.shape == (2, 2)
+
+
+def test_matmul_supports_batched_matrices():
+    left_data = np.arange(12).reshape(2, 2, 3)
+    right_data = np.arange(12).reshape(2, 3, 2)
+    left = Tensor(left_data)
+    right = Tensor(right_data)
+
+    result = left @ right
+
+    np.testing.assert_array_equal(result.data, np.matmul(left_data, right_data))
+    assert result.shape == (2, 2, 2)
+
+
+def test_matmul_broadcasts_batch_dimensions():
+    left_data = np.arange(12).reshape(2, 2, 3)
+    right_data = np.arange(6).reshape(3, 2)
+    left = Tensor(left_data)
+    right = Tensor(right_data)
+
+    result = left @ right
+
+    np.testing.assert_array_equal(result.data, np.matmul(left_data, right_data))
+    assert result.shape == (2, 2, 2)
+
+
+def test_matmul_tracks_graph_metadata_and_requires_grad():
+    left = Tensor([[1, 2]], requires_grad=False)
+    right = Tensor([[3], [4]], requires_grad=True)
+
+    result = left @ right
+
+    assert result.op == "matmul"
+    assert result.children == [left, right]
+    assert result.requires_grad
+
+
+def test_matmul_without_tracked_operands_does_not_require_grad():
+    left = Tensor([[1, 2]])
+    right = Tensor([[3], [4]])
+
+    result = left @ right
+
+    assert not result.requires_grad
+
+
+def test_matmul_rejects_incompatible_inner_dimensions():
+    left = Tensor(np.zeros((2, 3)))
+    right = Tensor(np.zeros((2, 4)))
+
+    with pytest.raises(ValueError):
+        left @ right
