@@ -34,7 +34,7 @@ def test_tensor_no_label():
 def test_repr():
     t = Tensor(42, label="t")
 
-    assert t.__repr__() == "<Tensor(data: 42 label: \"t\">"
+    assert t.__repr__() == "<Tensor(data: 42.0 label: \"t\">"
 
 def test_add():
     t1 = Tensor(10)

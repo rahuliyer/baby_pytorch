@@ -1,12 +1,20 @@
 import random
 import string
 
+import numpy as np
+
 from baby_pytorch.functions import topo_sort
 from baby_pytorch.functions import calculate_child_gradients
 
 class Tensor:
-    def __init__(self, data, children=None, op='', requires_grad=False, label=''):
-        self.data = data
+    def __init__(self, 
+                 data,
+                 children=None, 
+                 op='', 
+                 requires_grad=False, 
+                 label='',
+                 dtype=float):
+        self.data = np.array(data, dtype=dtype)
         self.children = [] if children is None else children
         self.op = op
         self.requires_grad = requires_grad
