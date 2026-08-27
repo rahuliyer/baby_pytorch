@@ -1,4 +1,4 @@
-def topo_sort(val):
+def topo_sort(tensor):
     visited = set()
     sorted_list = []
 
@@ -12,6 +12,6 @@ def topo_sort(val):
 
         sorted_list.append(node)
 
-    visit(val)
+    visit(tensor)
 
     return sorted_list
