@@ -19,6 +19,7 @@ class Tensor:
         self.op = op
         self.requires_grad = requires_grad
         self.grad = np.zeros(self.data.shape)
+        self.ctx = {}
 
         if label != '':
             self.label = label
@@ -146,6 +147,21 @@ class Tensor:
         )
 
         return out
+
+    def reshape(self, *shape):
+        out = Tensor(
+            data=self.data.reshape(*shape),
+            children = [self],
+            op='reshape',
+            requires_grad=self.requires_grad
+        )
+
+        out.ctx["original_shape"] = self.data.shape
+
+        return out
+
+    def view(self, *shape):
+        return self.reshape(*shape)
     
     def backward(self):
         nodes = topo_sort(self)

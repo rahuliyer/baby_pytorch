@@ -131,6 +131,11 @@ def calculate_child_gradients(tensor):
 
                 if c2.requires_grad:
                     c2.grad += unbroadcast(c1_t @ tensor.grad, c2.grad.shape)
+        case 'reshape':
+            if tensor.children[0].requires_grad:
+                tensor.children[0].grad += tensor.grad.reshape(
+                    tensor.ctx["original_shape"]
+                )
         case '':
             pass
         case _:

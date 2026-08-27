@@ -276,3 +276,107 @@ def test_matmul_rejects_incompatible_inner_dimensions():
 
     with pytest.raises(ValueError):
         left @ right
+
+
+def test_reshape_changes_shape_without_changing_values():
+    tensor = Tensor([1, 2, 3, 4, 5, 6])
+
+    result = tensor.reshape(2, 3)
+
+    np.testing.assert_array_equal(result.data, [[1, 2, 3], [4, 5, 6]])
+    assert result.shape == (2, 3)
+    assert tensor.shape == (6,)
+
+
+def test_reshape_supports_an_inferred_dimension():
+    tensor = Tensor(np.arange(12))
+
+    result = tensor.reshape(3, -1)
+
+    np.testing.assert_array_equal(result.data, np.arange(12).reshape(3, 4))
+    assert result.shape == (3, 4)
+
+
+def test_reshape_accepts_a_shape_tuple():
+    tensor = Tensor(np.arange(6))
+
+    result = tensor.reshape((2, 3))
+
+    np.testing.assert_array_equal(result.data, np.arange(6).reshape(2, 3))
+    assert result.shape == (2, 3)
+
+
+def test_reshape_tracks_graph_metadata_and_requires_grad():
+    tensor = Tensor(np.arange(6), requires_grad=True)
+
+    result = tensor.reshape(2, 3)
+
+    assert result.op == "reshape"
+    assert result.children == [tensor]
+    assert result.requires_grad
+    assert result.ctx["original_shape"] == (6,)
+
+
+def test_reshape_of_an_untracked_tensor_does_not_require_grad():
+    tensor = Tensor(np.arange(6))
+
+    assert not tensor.reshape(2, 3).requires_grad
+
+
+def test_reshape_rejects_an_incompatible_shape():
+    tensor = Tensor(np.arange(6))
+
+    with pytest.raises(ValueError):
+        tensor.reshape(4, 2)
+
+
+def test_view_changes_shape_without_changing_values():
+    tensor = Tensor([1, 2, 3, 4, 5, 6])
+
+    result = tensor.view(2, 3)
+
+    np.testing.assert_array_equal(result.data, [[1, 2, 3], [4, 5, 6]])
+    assert result.shape == (2, 3)
+    assert tensor.shape == (6,)
+
+
+def test_view_supports_an_inferred_dimension():
+    tensor = Tensor(np.arange(12))
+
+    result = tensor.view(3, -1)
+
+    np.testing.assert_array_equal(result.data, np.arange(12).reshape(3, 4))
+    assert result.shape == (3, 4)
+
+
+def test_view_accepts_a_shape_tuple():
+    tensor = Tensor(np.arange(6))
+
+    result = tensor.view((2, 3))
+
+    np.testing.assert_array_equal(result.data, np.arange(6).reshape(2, 3))
+    assert result.shape == (2, 3)
+
+
+def test_view_tracks_graph_metadata_and_requires_grad():
+    tensor = Tensor(np.arange(6), requires_grad=True)
+
+    result = tensor.view(2, 3)
+
+    assert result.op == "reshape"
+    assert result.children == [tensor]
+    assert result.requires_grad
+    assert result.ctx["original_shape"] == (6,)
+
+
+def test_view_of_an_untracked_tensor_does_not_require_grad():
+    tensor = Tensor(np.arange(6))
+
+    assert not tensor.view(2, 3).requires_grad
+
+
+def test_view_rejects_an_incompatible_shape():
+    tensor = Tensor(np.arange(6))
+
+    with pytest.raises(ValueError):
+        tensor.view(4, 2)
