@@ -53,6 +53,19 @@ def calculate_child_gradients(tensor):
                     (tensor.grad * tensor.data * np.log(tensor.children[0].data)),
                      tensor.children[1].grad.shape                
                 )
+        case 'log':
+            if tensor.children[0].requires_grad:
+                tensor.children[0].grad += (
+                    tensor.grad / tensor.children[0].data
+                )
+        case 'log10':
+            if tensor.children[0].requires_grad:
+                tensor.children[0].grad += (
+                    tensor.grad / (tensor.children[0].data * np.log(10))
+                )
+        case 'exp':
+            if tensor.children[0].requires_grad:
+                tensor.children[0].grad += tensor.grad * tensor.data
         case 'tanh':
             if tensor.children[0].requires_grad:
                 tensor.children[0].grad += tensor.grad * (1 - tensor.data ** 2)

@@ -144,6 +144,48 @@ def test_requires_grad():
     assert t3.requires_grad == True
 
 
+def test_log():
+    t = Tensor([1.0, np.e, np.e**2])
+
+    result = t.log()
+
+    np.testing.assert_allclose(result.data, [0.0, 1.0, 2.0])
+    assert result.op == 'log'
+    assert result.children == [t]
+
+
+def test_log10():
+    t = Tensor([1.0, 10.0, 1000.0])
+
+    result = t.log10()
+
+    np.testing.assert_allclose(result.data, [0.0, 1.0, 3.0])
+    assert result.op == 'log10'
+    assert result.children == [t]
+
+
+def test_exp():
+    t = Tensor([0.0, 1.0, 2.0])
+
+    result = t.exp()
+
+    np.testing.assert_allclose(result.data, [1.0, np.e, np.e**2])
+    assert result.op == 'exp'
+    assert result.children == [t]
+
+
+def test_log_exp_propagate_requires_grad():
+    tracked = Tensor(2.0, requires_grad=True)
+    plain = Tensor(2.0)
+
+    assert tracked.log().requires_grad
+    assert tracked.log10().requires_grad
+    assert tracked.exp().requires_grad
+    assert not plain.log().requires_grad
+    assert not plain.log10().requires_grad
+    assert not plain.exp().requires_grad
+
+
 def test_matmul_vector_dot_product():
     left = Tensor([1, 2, 3])
     right = Tensor([4, 5, 6])

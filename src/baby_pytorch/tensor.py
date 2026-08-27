@@ -107,6 +107,36 @@ class Tensor:
         other = self.__getTensor(other)
         return other.__truediv__(self)
 
+    def log(self):
+        out = Tensor(
+                data=np.log(self.data),
+                children=[self],
+                op='log',
+                requires_grad=self.requires_grad,
+        )
+
+        return out
+
+    def log10(self):
+        out = Tensor(
+                data=np.log10(self.data),
+                children=[self],
+                op='log10',
+                requires_grad=self.requires_grad,
+        )
+
+        return out
+
+    def exp(self):
+        out = Tensor(
+                data=np.exp(self.data),
+                children=[self],
+                op='exp',
+                requires_grad=self.requires_grad,
+        )
+
+        return out
+
     def __matmul__(self, other):
         out = Tensor(
             data=np.matmul(self.data, other.data),

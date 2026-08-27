@@ -208,6 +208,56 @@ def test_repeated_backward_accumulates_reduced_leaf_gradients():
     np.testing.assert_array_equal(row.grad, [4, 4, 4])
 
 
+def test_log_backward():
+    x = Tensor(4.0, requires_grad=True)
+
+    (3 * x.log()).backward()
+
+    assert x.grad == pytest.approx(3.0 / 4.0)
+
+
+def test_log10_backward():
+    x = Tensor(4.0, requires_grad=True)
+
+    (3 * x.log10()).backward()
+
+    assert x.grad == pytest.approx(3.0 / (4.0 * math.log(10)))
+
+
+def test_exp_backward():
+    x = Tensor(2.0, requires_grad=True)
+
+    (3 * x.exp()).backward()
+
+    assert x.grad == pytest.approx(3.0 * math.exp(2.0))
+
+
+def test_log_backward_elementwise_over_an_array():
+    x = Tensor([1.0, 2.0, 4.0], requires_grad=True)
+
+    x.log().backward()
+
+    np.testing.assert_allclose(x.grad, [1.0, 0.5, 0.25])
+    assert x.grad.shape == x.shape
+
+
+def test_exp_backward_uses_upstream_gradient_from_a_larger_graph():
+    x = Tensor([0.0, 1.0], requires_grad=True)
+    weights = Tensor([2.0, 5.0])
+
+    (x.exp() * weights).backward()
+
+    np.testing.assert_allclose(x.grad, [2.0 * math.exp(0.0), 5.0 * math.exp(1.0)])
+
+
+def test_composed_log_of_exp_is_identity_gradient():
+    x = Tensor(3.0, requires_grad=True)
+
+    x.exp().log().backward()
+
+    assert x.grad == pytest.approx(1.0)
+
+
 def test_matmul_backward_for_vector_dot_product():
     left = Tensor([1, 2, 3], requires_grad=True)
     right = Tensor([4, 5, 6], requires_grad=True)
