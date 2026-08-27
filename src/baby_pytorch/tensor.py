@@ -131,3 +131,7 @@ class Tensor:
 
         for node in nodes:
             calculate_child_gradients(node)
+
+    @property
+    def shape(self):
+        return self.data.shape
