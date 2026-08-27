@@ -162,6 +162,29 @@ class Tensor:
 
     def view(self, *shape):
         return self.reshape(*shape)
+
+    def swapaxes(self, axis1, axis2):
+        out = Tensor(
+            data=self.data.swapaxes(axis1, axis2),
+            children=[self],
+            op='swapaxes',
+            requires_grad=self.requires_grad
+        )
+
+        out.ctx["axis1"] = axis1
+        out.ctx["axis2"] = axis2
+
+        return out
+
+    def T(self):
+        out = Tensor(
+            data=self.data.T,
+            children=[self],
+            op='T',
+            requires_grad=self.requires_grad
+        )
+
+        return out
     
     def backward(self):
         nodes = topo_sort(self)

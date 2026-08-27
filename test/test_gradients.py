@@ -534,3 +534,84 @@ def test_repeated_view_backward_accumulates_leaf_gradients():
     result.backward()
 
     np.testing.assert_array_equal(tensor.grad, np.full(6, 2.0))
+
+
+def test_swapaxes_backward_restores_the_original_gradient_axes():
+    tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
+    weights = Tensor([[1, 2], [3, 4], [5, 6]])
+
+    (tensor.swapaxes(0, 1) * weights).backward()
+
+    np.testing.assert_array_equal(tensor.grad, [[1, 3, 5], [2, 4, 6]])
+    assert tensor.grad.shape == tensor.shape
+
+
+def test_swapaxes_backward_supports_negative_axes_on_a_3d_tensor():
+    data = np.arange(24).reshape(2, 3, 4)
+    weights = np.arange(1, 25).reshape(2, 4, 3)
+    tensor = Tensor(data, requires_grad=True)
+
+    (tensor.swapaxes(-1, -2) * Tensor(weights)).backward()
+
+    np.testing.assert_array_equal(tensor.grad, np.swapaxes(weights, -1, -2))
+    assert tensor.grad.shape == tensor.shape
+
+
+def test_backward_through_two_swapaxes_operations():
+    tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
+    weights = Tensor([[1, 2, 3], [4, 5, 6]])
+
+    result = tensor.swapaxes(0, 1).swapaxes(0, 1)
+    (result * weights).backward()
+
+    np.testing.assert_array_equal(tensor.grad, weights.data)
+
+
+def test_repeated_swapaxes_backward_accumulates_leaf_gradients():
+    tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
+    result = tensor.swapaxes(0, 1)
+
+    result.backward()
+    result.backward()
+
+    np.testing.assert_array_equal(tensor.grad, np.full((2, 3), 2.0))
+
+
+def test_T_backward_restores_the_original_gradient_axes():
+    tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
+    weights = Tensor([[1, 2], [3, 4], [5, 6]])
+
+    (tensor.T() * weights).backward()
+
+    np.testing.assert_array_equal(tensor.grad, weights.data.T)
+    assert tensor.grad.shape == tensor.shape
+
+
+def test_T_backward_reverses_gradient_axes_for_a_3d_tensor():
+    tensor = Tensor(np.arange(24).reshape(2, 3, 4), requires_grad=True)
+    weights = Tensor(np.arange(1, 25).reshape(4, 3, 2))
+
+    (tensor.T() * weights).backward()
+
+    np.testing.assert_array_equal(tensor.grad, weights.data.T)
+    assert tensor.grad.shape == tensor.shape
+
+
+def test_backward_through_two_T_operations():
+    tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
+    weights = Tensor([[1, 2, 3], [4, 5, 6]])
+
+    result = tensor.T().T()
+    (result * weights).backward()
+
+    np.testing.assert_array_equal(tensor.grad, weights.data)
+
+
+def test_repeated_T_backward_accumulates_leaf_gradients():
+    tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
+    result = tensor.T()
+
+    result.backward()
+    result.backward()
+
+    np.testing.assert_array_equal(tensor.grad, np.full((2, 3), 2.0))

@@ -136,6 +136,15 @@ def calculate_child_gradients(tensor):
                 tensor.children[0].grad += tensor.grad.reshape(
                     tensor.ctx["original_shape"]
                 )
+        case 'swapaxes':
+            if tensor.children[0].requires_grad:
+                tensor.children[0].grad += tensor.grad.swapaxes(
+                    tensor.ctx["axis1"], 
+                    tensor.ctx["axis2"]
+                )
+        case 'T':
+            if tensor.children[0].requires_grad:
+                tensor.children[0].grad += tensor.grad.T
         case '':
             pass
         case _:

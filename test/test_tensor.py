@@ -380,3 +380,122 @@ def test_view_rejects_an_incompatible_shape():
 
     with pytest.raises(ValueError):
         tensor.view(4, 2)
+
+
+def test_swapaxes_transposes_a_matrix():
+    tensor = Tensor([[1, 2, 3], [4, 5, 6]])
+
+    result = tensor.swapaxes(0, 1)
+
+    np.testing.assert_array_equal(result.data, [[1, 4], [2, 5], [3, 6]])
+    assert result.shape == (3, 2)
+    assert tensor.shape == (2, 3)
+
+
+def test_swapaxes_supports_multidimensional_tensors():
+    data = np.arange(24).reshape(2, 3, 4)
+    tensor = Tensor(data)
+
+    result = tensor.swapaxes(0, 2)
+
+    np.testing.assert_array_equal(result.data, np.swapaxes(data, 0, 2))
+    assert result.shape == (4, 3, 2)
+
+
+def test_swapaxes_supports_negative_axes():
+    data = np.arange(24).reshape(2, 3, 4)
+    tensor = Tensor(data)
+
+    result = tensor.swapaxes(-1, -2)
+
+    np.testing.assert_array_equal(result.data, np.swapaxes(data, -1, -2))
+    assert result.shape == (2, 4, 3)
+
+
+def test_swapaxes_with_the_same_axis_leaves_values_unchanged():
+    data = np.arange(6).reshape(2, 3)
+    tensor = Tensor(data)
+
+    result = tensor.swapaxes(1, 1)
+
+    np.testing.assert_array_equal(result.data, data)
+    assert result.shape == tensor.shape
+
+
+def test_swapaxes_tracks_graph_metadata_and_requires_grad():
+    tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
+
+    result = tensor.swapaxes(0, 1)
+
+    assert result.op == "swapaxes"
+    assert result.children == [tensor]
+    assert result.requires_grad
+    assert result.ctx == {"axis1": 0, "axis2": 1}
+
+
+def test_swapaxes_of_an_untracked_tensor_does_not_require_grad():
+    tensor = Tensor(np.arange(6).reshape(2, 3))
+
+    assert not tensor.swapaxes(0, 1).requires_grad
+
+
+def test_swapaxes_rejects_an_out_of_range_axis():
+    tensor = Tensor(np.arange(6).reshape(2, 3))
+
+    with pytest.raises(np.exceptions.AxisError):
+        tensor.swapaxes(0, 2)
+
+
+def test_T_transposes_a_matrix():
+    tensor = Tensor([[1, 2, 3], [4, 5, 6]])
+
+    result = tensor.T()
+
+    np.testing.assert_array_equal(result.data, [[1, 4], [2, 5], [3, 6]])
+    assert result.shape == (3, 2)
+    assert tensor.shape == (2, 3)
+
+
+def test_T_leaves_a_vector_unchanged():
+    tensor = Tensor([1, 2, 3])
+
+    result = tensor.T()
+
+    np.testing.assert_array_equal(result.data, tensor.data)
+    assert result.shape == (3,)
+
+
+def test_T_reverses_all_axes_of_a_multidimensional_tensor():
+    data = np.arange(24).reshape(2, 3, 4)
+    tensor = Tensor(data)
+
+    result = tensor.T()
+
+    np.testing.assert_array_equal(result.data, data.T)
+    assert result.shape == (4, 3, 2)
+
+
+def test_T_twice_restores_the_original_values_and_shape():
+    data = np.arange(24).reshape(2, 3, 4)
+    tensor = Tensor(data)
+
+    result = tensor.T().T()
+
+    np.testing.assert_array_equal(result.data, data)
+    assert result.shape == tensor.shape
+
+
+def test_T_tracks_graph_metadata_and_requires_grad():
+    tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
+
+    result = tensor.T()
+
+    assert result.op == "T"
+    assert result.children == [tensor]
+    assert result.requires_grad
+
+
+def test_T_of_an_untracked_tensor_does_not_require_grad():
+    tensor = Tensor(np.arange(6).reshape(2, 3))
+
+    assert not tensor.T().requires_grad
