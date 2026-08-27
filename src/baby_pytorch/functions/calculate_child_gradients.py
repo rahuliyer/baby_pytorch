@@ -145,6 +145,12 @@ def calculate_child_gradients(tensor):
         case 'T':
             if tensor.children[0].requires_grad:
                 tensor.children[0].grad += tensor.grad.T
+        case 'index':
+            if tensor.children[0].requires_grad:
+                grad = np.zeros(tensor.children[0].data.shape)
+                np.add.at(grad, tensor.ctx["index"], tensor.grad)
+
+                tensor.children[0].grad += grad
         case '':
             pass
         case _:

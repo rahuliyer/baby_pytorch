@@ -185,6 +185,18 @@ class Tensor:
         )
 
         return out
+
+    def __getitem__(self, index):
+        out = Tensor(
+            data=self.data[index],
+            children=[self],
+            op='index',
+            requires_grad=self.requires_grad
+        )
+
+        out.ctx["index"] = index
+
+        return out
     
     def backward(self):
         nodes = topo_sort(self)

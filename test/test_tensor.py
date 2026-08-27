@@ -499,3 +499,87 @@ def test_T_of_an_untracked_tensor_does_not_require_grad():
     tensor = Tensor(np.arange(6).reshape(2, 3))
 
     assert not tensor.T().requires_grad
+
+
+def test_getitem_selects_a_single_element():
+    tensor = Tensor([10, 20, 30])
+
+    result = tensor[1]
+
+    assert result.data == 20
+    assert result.shape == ()
+
+
+def test_getitem_supports_negative_indices():
+    tensor = Tensor([10, 20, 30])
+
+    assert tensor[-1].data == 30
+
+
+def test_getitem_supports_slices():
+    tensor = Tensor([0, 1, 2, 3, 4, 5])
+
+    result = tensor[1:5:2]
+
+    np.testing.assert_array_equal(result.data, [1, 3])
+    assert result.shape == (2,)
+
+
+def test_getitem_supports_multidimensional_indices():
+    tensor = Tensor(np.arange(12).reshape(3, 4))
+
+    result = tensor[1:, 1:3]
+
+    np.testing.assert_array_equal(result.data, [[5, 6], [9, 10]])
+    assert result.shape == (2, 2)
+
+
+def test_getitem_supports_ellipsis():
+    data = np.arange(24).reshape(2, 3, 4)
+    tensor = Tensor(data)
+
+    result = tensor[..., 2]
+
+    np.testing.assert_array_equal(result.data, data[..., 2])
+    assert result.shape == (2, 3)
+
+
+def test_getitem_supports_boolean_masks():
+    tensor = Tensor([10, 20, 30, 40])
+    mask = np.array([True, False, True, False])
+
+    result = tensor[mask]
+
+    np.testing.assert_array_equal(result.data, [10, 30])
+
+
+def test_getitem_supports_fancy_integer_indices():
+    tensor = Tensor([10, 20, 30, 40])
+
+    result = tensor[[3, 1, 1]]
+
+    np.testing.assert_array_equal(result.data, [40, 20, 20])
+
+
+def test_getitem_tracks_graph_metadata_and_requires_grad():
+    tensor = Tensor(np.arange(6), requires_grad=True)
+
+    result = tensor[2:5]
+
+    assert result.op == "index"
+    assert result.children == [tensor]
+    assert result.requires_grad
+    assert result.ctx["index"] == slice(2, 5)
+
+
+def test_getitem_of_an_untracked_tensor_does_not_require_grad():
+    tensor = Tensor(np.arange(6))
+
+    assert not tensor[2:5].requires_grad
+
+
+def test_getitem_rejects_an_out_of_range_index():
+    tensor = Tensor([10, 20, 30])
+
+    with pytest.raises(IndexError):
+        tensor[3]

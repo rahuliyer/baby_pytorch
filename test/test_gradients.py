@@ -615,3 +615,73 @@ def test_repeated_T_backward_accumulates_leaf_gradients():
     result.backward()
 
     np.testing.assert_array_equal(tensor.grad, np.full((2, 3), 2.0))
+
+
+def test_getitem_backward_scatters_a_scalar_gradient():
+    tensor = Tensor([10, 20, 30, 40], requires_grad=True)
+
+    tensor[2].backward()
+
+    np.testing.assert_array_equal(tensor.grad, [0, 0, 1, 0])
+    assert tensor.grad.shape == tensor.shape
+
+
+def test_getitem_backward_scatters_a_slice_gradient():
+    tensor = Tensor(np.arange(12).reshape(3, 4), requires_grad=True)
+    weights = Tensor([[1, 2], [3, 4], [5, 6]])
+
+    (tensor[:, 1:3] * weights).backward()
+
+    np.testing.assert_array_equal(
+        tensor.grad,
+        [[0, 1, 2, 0], [0, 3, 4, 0], [0, 5, 6, 0]],
+    )
+
+
+def test_getitem_backward_supports_multidimensional_integer_indices():
+    tensor = Tensor(np.arange(12).reshape(3, 4), requires_grad=True)
+
+    tensor[1, 2].backward()
+
+    expected = np.zeros((3, 4))
+    expected[1, 2] = 1
+    np.testing.assert_array_equal(tensor.grad, expected)
+
+
+def test_getitem_backward_scatters_boolean_mask_gradients():
+    tensor = Tensor([10, 20, 30, 40], requires_grad=True)
+    mask = np.array([True, False, True, False])
+    weights = Tensor([2, 5])
+
+    (tensor[mask] * weights).backward()
+
+    np.testing.assert_array_equal(tensor.grad, [2, 0, 5, 0])
+
+
+def test_getitem_backward_accumulates_repeated_fancy_indices():
+    tensor = Tensor([10, 20, 30, 40], requires_grad=True)
+    weights = Tensor([1, 2, 3])
+
+    (tensor[[0, 0, 2]] * weights).backward()
+
+    np.testing.assert_array_equal(tensor.grad, [3, 0, 3, 0])
+
+
+def test_backward_through_multiple_getitem_operations():
+    tensor = Tensor(np.arange(10), requires_grad=True)
+    weights = Tensor([2, 3])
+
+    result = tensor[2:8][[1, 4]]
+    (result * weights).backward()
+
+    np.testing.assert_array_equal(tensor.grad, [0, 0, 0, 2, 0, 0, 3, 0, 0, 0])
+
+
+def test_repeated_getitem_backward_accumulates_leaf_gradients():
+    tensor = Tensor([10, 20, 30, 40], requires_grad=True)
+    result = tensor[1:3]
+
+    result.backward()
+    result.backward()
+
+    np.testing.assert_array_equal(tensor.grad, [0, 2, 2, 0])
