@@ -18,7 +18,7 @@ class Tensor:
         self.children = [] if children is None else children
         self.op = op
         self.requires_grad = requires_grad
-        self.grad = 0.0
+        self.grad = np.zeros(self.data.shape)
 
         if label != '':
             self.label = label
@@ -118,16 +118,16 @@ class Tensor:
         # incorrect results.
         for node in nodes:
             if node.children:
-                node.grad = 0.0
+                node.grad = np.zeros(node.data.shape)
 
         # This is for a weird pytorch convention. If you call backward() on
         # a leaf node, the gradients accumulate (i.e 1 is added each time)
         # It's kinda weird because backward() on a lead doesn't really mean
         # anything.
         if self.children:
-            self.grad = 1.0
+            self.grad = np.ones(self.data.shape)
         else:
-            self.grad += 1.0
+            self.grad += np.ones(self.data.shape)
 
         for node in nodes:
             calculate_child_gradients(node)
