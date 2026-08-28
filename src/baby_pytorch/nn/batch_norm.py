@@ -31,9 +31,26 @@ class BatchNorm1d(Module):
         )
 
         if training:
+            sample_count = x.data.size // x.shape[1]
+            if sample_count < 2:
+                raise ValueError(
+                    "Expected more than 1 value per channel when training, "
+                    f"received {sample_count}."
+                )
+
             mean = x.mean(dim=reduction_dims, keepdims=True)
-            var = x.var(dim=reduction_dims, keepdims=True)
+
+            # Normalizing standardizes the batch we were handed, so it divides
+            # by the batch size and uses the biased variance. The running
+            # statistics instead estimate the variance of unseen data, so they
+            # use the unbiased one. Conflating the two shrinks every activation
+            # by sqrt(n / (n - 1)) and is what PyTorch is careful to separate.
+            var = x.var(dim=reduction_dims, keepdims=True, correction=0)
             normalized = (x - mean) / (var + self.eps) ** 0.5
+
+            unbiased_var = var.detach() * (
+                sample_count / (sample_count - 1)
+            )
 
             self.running_mean = (
                 self.running_mean * (1 - self.momentum)
@@ -41,7 +58,7 @@ class BatchNorm1d(Module):
             ).detach()
             self.running_var = (
                 self.running_var * (1 - self.momentum)
-                + var.reshape(self.fan_in).detach() * self.momentum
+                + unbiased_var.reshape(self.fan_in) * self.momentum
             ).detach()
         else:
             normalized = (

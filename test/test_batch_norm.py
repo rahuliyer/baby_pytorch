@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 import torch
 
 from baby_pytorch.nn import BatchNorm1d
@@ -66,7 +67,7 @@ def test_batch_norm_training_values_and_gradients_match_notebook_formula():
         requires_grad=True,
     )
     torch_mean = torch_input.mean(dim=0)
-    torch_var = torch_input.var(dim=0)
+    torch_var = torch_input.var(dim=0, correction=0)
     torch_result = (
         (torch_input - torch_mean) / (torch_var + 1e-5) ** 0.5
         * torch_gamma
@@ -127,7 +128,7 @@ def test_batch_norm_reduces_non_channel_axes_for_3d_inputs():
         requires_grad=True,
     )
     torch_mean = torch_input.mean(dim=(0, 2), keepdim=True)
-    torch_var = torch_input.var(dim=(0, 2), keepdim=True)
+    torch_var = torch_input.var(dim=(0, 2), keepdim=True, correction=0)
     torch_result = (
         (torch_input - torch_mean) / (torch_var + 1e-5) ** 0.5
         * torch_gamma.reshape(1, 3, 1)
@@ -259,3 +260,76 @@ def test_batch_norm_save_and_load_copy_parameters_and_running_statistics():
         loaded is original
         for loaded, original in zip(loaded_state, original_state)
     )
+
+
+def test_batch_norm_matches_torch_module_for_3d_inputs():
+    """The tests above build the reference by hand; this one uses torch's."""
+    rng = np.random.default_rng(0)
+    batch_norm = BatchNorm1d(3, eps=1e-5, momentum=0.01)
+    torch_batch_norm = torch.nn.BatchNorm1d(3, eps=1e-5, momentum=0.01).double()
+
+    # Several steps, so the running statistics have to track each other too.
+    for _ in range(3):
+        input_data = rng.normal(size=(4, 3, 6))
+        # A plain sum() has almost no gradient through the normalization, which
+        # would hide a mismatch, so weight the outputs.
+        coefficients = rng.normal(size=(4, 3, 6))
+
+        tensor = Tensor(input_data, requires_grad=True)
+        torch_input = torch.tensor(
+            input_data,
+            dtype=torch.float64,
+            requires_grad=True,
+        )
+
+        baby_result = batch_norm(tensor)
+        torch_result = torch_batch_norm(torch_input)
+        (baby_result * Tensor(coefficients)).sum().backward()
+        (torch_result * torch.tensor(coefficients)).sum().backward()
+
+        np.testing.assert_allclose(
+            baby_result.data,
+            torch_result.detach().numpy(),
+        )
+        np.testing.assert_allclose(tensor.grad, torch_input.grad.numpy())
+        np.testing.assert_allclose(
+            batch_norm.gamma.grad,
+            torch_batch_norm.weight.grad.numpy(),
+        )
+        np.testing.assert_allclose(
+            batch_norm.beta.grad,
+            torch_batch_norm.bias.grad.numpy(),
+        )
+        np.testing.assert_allclose(
+            batch_norm.running_mean.data,
+            torch_batch_norm.running_mean.numpy(),
+        )
+        np.testing.assert_allclose(
+            batch_norm.running_var.data,
+            torch_batch_norm.running_var.numpy(),
+        )
+
+        torch_batch_norm.zero_grad()
+        batch_norm.gamma.grad = np.zeros(3)
+        batch_norm.beta.grad = np.zeros(3)
+
+
+@pytest.mark.parametrize("shape", [(1, 3), (1, 3, 1)])
+def test_batch_norm_rejects_single_sample_batches_in_training(shape):
+    """torch refuses this too: the batch variance would be identically zero."""
+    batch_norm = BatchNorm1d(3)
+
+    with pytest.raises(
+        ValueError,
+        match="Expected more than 1 value per channel when training",
+    ):
+        batch_norm(Tensor(np.zeros(shape)))
+
+
+@pytest.mark.parametrize("shape", [(1, 3), (1, 3, 1)])
+def test_batch_norm_allows_single_sample_batches_in_evaluation(shape):
+    batch_norm = BatchNorm1d(3)
+
+    result = batch_norm(Tensor(np.zeros(shape)), training=False)
+
+    assert result.shape == shape

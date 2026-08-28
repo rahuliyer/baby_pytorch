@@ -436,17 +436,6 @@ def _build_batch_norm_pair(seed=0):
     return baby_forward, torch_net, pairs
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "BatchNorm1d normalizes with Tensor.var()'s default correction=1 "
-        "(the unbiased variance).  PyTorch normalizes with the biased "
-        "variance in training mode and only uses the unbiased variance for "
-        "the running_var update, so the activations - and therefore every "
-        "gradient downstream of them - diverge.  Remove this xfail once "
-        "BatchNorm1d normalizes with correction=0."
-    ),
-)
 def test_batch_norm_network_training_matches_pytorch():
     baby_forward, torch_net, pairs = _build_batch_norm_pair()
 
