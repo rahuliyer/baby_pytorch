@@ -7,6 +7,33 @@ from baby_pytorch.tensor import Tensor
 from baby_pytorch.activation_functions import tanh, sigmoid, relu
 
 
+def test_backward_rejects_non_scalar_outputs():
+    tensor = Tensor([1.0, 2.0], requires_grad=True)
+
+    with pytest.raises(
+        ValueError,
+        match=r"backward\(\) only supported on scalar types",
+    ):
+        tensor.backward()
+
+
+def test_backward_accepts_scalar_outputs():
+    tensor = Tensor(3.0, requires_grad=True)
+
+    (tensor * 2).backward()
+
+    assert tensor.grad == pytest.approx(2.0)
+
+
+@pytest.mark.parametrize("shape", [(1,), (1, 1), (1, 1, 1)])
+def test_backward_accepts_one_element_outputs_with_dimensions(shape):
+    tensor = Tensor(np.full(shape, 3.0), requires_grad=True)
+
+    (tensor * 2).backward()
+
+    np.testing.assert_array_equal(tensor.grad, np.full(shape, 2.0))
+
+
 def test_chain_rule_for_all_binary_operations():
     x = Tensor(2.0, requires_grad=True)
     y = 3 * ((x + 1) * (x - 4))
@@ -90,7 +117,7 @@ def test_addition_backward_reduces_a_broadcast_row_gradient():
     matrix = Tensor(np.ones((2, 3)), requires_grad=True)
     row = Tensor([10, 20, 30], requires_grad=True)
 
-    (matrix + row).backward()
+    (matrix + row).sum().backward()
 
     np.testing.assert_array_equal(matrix.grad, np.ones((2, 3)))
     np.testing.assert_array_equal(row.grad, [2, 2, 2])
@@ -102,7 +129,7 @@ def test_subtraction_backward_reduces_and_negates_a_broadcast_gradient():
     matrix = Tensor(np.ones((2, 3)), requires_grad=True)
     row = Tensor([10, 20, 30], requires_grad=True)
 
-    (matrix - row).backward()
+    (matrix - row).sum().backward()
 
     np.testing.assert_array_equal(matrix.grad, np.ones((2, 3)))
     np.testing.assert_array_equal(row.grad, [-2, -2, -2])
@@ -112,7 +139,7 @@ def test_multiplication_backward_reduces_row_and_column_gradients():
     column = Tensor([[1], [2]], requires_grad=True)
     row = Tensor([10, 20, 30], requires_grad=True)
 
-    (column * row).backward()
+    (column * row).sum().backward()
 
     np.testing.assert_array_equal(column.grad, [[60], [60]])
     np.testing.assert_array_equal(row.grad, [3, 3, 3])
@@ -124,7 +151,7 @@ def test_multiplication_backward_reduces_to_a_scalar_gradient():
     values = Tensor([[1, 2, 3], [4, 5, 6]], requires_grad=True)
     scale = Tensor(2, requires_grad=True)
 
-    (values * scale).backward()
+    (values * scale).sum().backward()
 
     np.testing.assert_array_equal(values.grad, np.full((2, 3), 2.0))
     np.testing.assert_array_equal(scale.grad, np.array(21.0))
@@ -135,7 +162,7 @@ def test_addition_backward_reduces_multiple_leading_dimensions():
     values = Tensor(np.ones((2, 3, 4)), requires_grad=True)
     offsets = Tensor([10, 20, 30, 40], requires_grad=True)
 
-    (values + offsets).backward()
+    (values + offsets).sum().backward()
 
     np.testing.assert_array_equal(values.grad, np.ones((2, 3, 4)))
     np.testing.assert_array_equal(offsets.grad, [6, 6, 6, 6])
@@ -145,7 +172,7 @@ def test_division_backward_reduces_a_broadcast_denominator_gradient():
     numerator = Tensor([[2, 4, 6], [8, 10, 12]], requires_grad=True)
     denominator = Tensor([2, 2, 3], requires_grad=True)
 
-    (numerator / denominator).backward()
+    (numerator / denominator).sum().backward()
 
     np.testing.assert_allclose(
         numerator.grad,
@@ -158,7 +185,7 @@ def test_power_backward_reduces_broadcast_base_and_exponent_gradients():
     base = Tensor([[2], [3]], requires_grad=True)
     exponent = Tensor([1, 2, 3], requires_grad=True)
 
-    (base**exponent).backward()
+    (base**exponent).sum().backward()
 
     np.testing.assert_allclose(base.grad, [[17], [34]])
     np.testing.assert_allclose(
@@ -175,7 +202,7 @@ def test_backward_leaves_non_broadcast_gradient_shapes_unchanged():
     left = Tensor([[1, 2], [3, 4]], requires_grad=True)
     right = Tensor([[5, 6], [7, 8]], requires_grad=True)
 
-    (left * right).backward()
+    (left * right).sum().backward()
 
     np.testing.assert_array_equal(left.grad, right.data)
     np.testing.assert_array_equal(right.grad, left.data)
@@ -189,7 +216,7 @@ def test_backward_handles_multiple_broadcasts_in_one_graph():
     column = Tensor([[100], [200]], requires_grad=True)
 
     result = matrix * row + column
-    result.backward()
+    result.sum().backward()
 
     np.testing.assert_array_equal(matrix.grad, [[10, 20, 30], [10, 20, 30]])
     np.testing.assert_array_equal(row.grad, [5, 7, 9])
@@ -201,8 +228,8 @@ def test_repeated_backward_accumulates_reduced_leaf_gradients():
     row = Tensor([10, 20, 30], requires_grad=True)
     result = matrix + row
 
-    result.backward()
-    result.backward()
+    result.sum().backward()
+    result.sum().backward()
 
     np.testing.assert_array_equal(matrix.grad, np.full((2, 3), 2.0))
     np.testing.assert_array_equal(row.grad, [4, 4, 4])
@@ -235,7 +262,7 @@ def test_exp_backward():
 def test_log_backward_elementwise_over_an_array():
     x = Tensor([1.0, 2.0, 4.0], requires_grad=True)
 
-    x.log().backward()
+    x.log().sum().backward()
 
     np.testing.assert_allclose(x.grad, [1.0, 0.5, 0.25])
     assert x.grad.shape == x.shape
@@ -245,7 +272,7 @@ def test_exp_backward_uses_upstream_gradient_from_a_larger_graph():
     x = Tensor([0.0, 1.0], requires_grad=True)
     weights = Tensor([2.0, 5.0])
 
-    (x.exp() * weights).backward()
+    (x.exp() * weights).sum().backward()
 
     np.testing.assert_allclose(x.grad, [2.0 * math.exp(0.0), 5.0 * math.exp(1.0)])
 
@@ -272,7 +299,7 @@ def test_matmul_backward_for_matrix_by_vector():
     matrix = Tensor([[1, 2, 3], [4, 5, 6]], requires_grad=True)
     vector = Tensor([7, 8, 9], requires_grad=True)
 
-    (matrix @ vector).backward()
+    (matrix @ vector).sum().backward()
 
     np.testing.assert_array_equal(matrix.grad, [[7, 8, 9], [7, 8, 9]])
     np.testing.assert_array_equal(vector.grad, [5, 7, 9])
@@ -284,7 +311,7 @@ def test_matmul_backward_for_vector_by_matrix():
     vector = Tensor([1, 2], requires_grad=True)
     matrix = Tensor([[3, 4, 5], [6, 7, 8]], requires_grad=True)
 
-    (vector @ matrix).backward()
+    (vector @ matrix).sum().backward()
 
     np.testing.assert_array_equal(vector.grad, [12, 21])
     np.testing.assert_array_equal(matrix.grad, [[1, 1, 1], [2, 2, 2]])
@@ -294,7 +321,7 @@ def test_matmul_backward_for_matrix_by_matrix():
     left = Tensor([[1, 2, 3], [4, 5, 6]], requires_grad=True)
     right = Tensor([[7, 8], [9, 10], [11, 12]], requires_grad=True)
 
-    (left @ right).backward()
+    (left @ right).sum().backward()
 
     np.testing.assert_array_equal(left.grad, [[15, 19, 23], [15, 19, 23]])
     np.testing.assert_array_equal(right.grad, [[5, 5], [7, 7], [9, 9]])
@@ -309,7 +336,7 @@ def test_matmul_backward_for_batched_matrices():
     right = Tensor(right_data, requires_grad=True)
 
     result = left @ right
-    result.backward()
+    result.sum().backward()
 
     upstream = np.ones(result.shape)
     expected_left = np.matmul(upstream, np.swapaxes(right_data, -1, -2))
@@ -326,7 +353,7 @@ def test_matmul_backward_for_batched_matrices_by_a_shared_vector():
     vector = Tensor([1, 2, 3], requires_grad=True)
 
     result = matrices @ vector
-    result.backward()
+    result.sum().backward()
 
     np.testing.assert_array_equal(
         matrices.grad,
@@ -348,7 +375,7 @@ def test_matmul_backward_for_a_shared_vector_by_batched_matrices():
     )
 
     result = vector @ matrices
-    result.backward()
+    result.sum().backward()
 
     np.testing.assert_array_equal(vector.grad, [14, 22, 30])
     np.testing.assert_array_equal(
@@ -369,7 +396,7 @@ def test_matmul_backward_reduces_a_broadcast_batch_gradient():
     right = Tensor(right_data, requires_grad=True)
 
     result = left @ right
-    result.backward()
+    result.sum().backward()
 
     upstream = np.ones(result.shape)
     expected_left = np.matmul(upstream, right_data.T)
@@ -387,7 +414,7 @@ def test_matmul_backward_uses_upstream_gradient_from_a_larger_graph():
     weights = Tensor([[1, 2], [3, 4]])
 
     result = (left @ right) * weights
-    result.backward()
+    result.sum().backward()
 
     np.testing.assert_array_equal(left.grad, weights.data @ right.data.T)
     np.testing.assert_array_equal(right.grad, left.data.T @ weights.data)
@@ -399,7 +426,7 @@ def test_vector_matmul_backward_uses_nonuniform_upstream_gradient():
     weights = Tensor([2, 3, 4])
 
     result = (vector @ matrix) * weights
-    result.backward()
+    result.sum().backward()
 
     np.testing.assert_array_equal(vector.grad, [38, 65])
     np.testing.assert_array_equal(matrix.grad, [[2, 3, 4], [4, 6, 8]])
@@ -412,7 +439,7 @@ def test_matmul_backward_reduces_broadcast_dimensions_for_both_operands():
     right = Tensor(right_data, requires_grad=True)
 
     result = left @ right
-    result.backward()
+    result.sum().backward()
 
     upstream = np.ones(result.shape)
     expected_left = np.matmul(
@@ -433,7 +460,7 @@ def test_matmul_backward_only_updates_operands_that_require_grad():
     left = Tensor([[1, 2], [3, 4]], requires_grad=True)
     right = Tensor([[5, 6], [7, 8]], requires_grad=False)
 
-    (left @ right).backward()
+    (left @ right).sum().backward()
 
     np.testing.assert_array_equal(left.grad, [[11, 15], [11, 15]])
     np.testing.assert_array_equal(right.grad, np.zeros((2, 2)))
@@ -444,8 +471,8 @@ def test_repeated_matmul_backward_accumulates_leaf_gradients():
     right = Tensor([[5, 6], [7, 8]], requires_grad=True)
     result = left @ right
 
-    result.backward()
-    result.backward()
+    result.sum().backward()
+    result.sum().backward()
 
     np.testing.assert_array_equal(left.grad, [[22, 30], [22, 30]])
     np.testing.assert_array_equal(right.grad, [[8, 8], [12, 12]])
@@ -454,7 +481,7 @@ def test_repeated_matmul_backward_accumulates_leaf_gradients():
 def test_reshape_backward_restores_the_original_gradient_shape():
     tensor = Tensor(np.arange(6), requires_grad=True)
 
-    tensor.reshape(2, 3).backward()
+    tensor.reshape(2, 3).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, np.ones(6))
     assert tensor.grad.shape == tensor.shape
@@ -464,7 +491,7 @@ def test_reshape_backward_uses_upstream_gradient_from_a_larger_graph():
     tensor = Tensor(np.arange(6), requires_grad=True)
     weights = Tensor([[1, 2, 3], [4, 5, 6]])
 
-    (tensor.reshape(2, 3) * weights).backward()
+    (tensor.reshape(2, 3) * weights).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, [1, 2, 3, 4, 5, 6])
 
@@ -473,7 +500,7 @@ def test_reshape_backward_supports_an_inferred_dimension():
     tensor = Tensor(np.arange(12), requires_grad=True)
     weights = Tensor(np.arange(1, 13).reshape(3, 4))
 
-    (tensor.reshape(3, -1) * weights).backward()
+    (tensor.reshape(3, -1) * weights).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, np.arange(1, 13))
 
@@ -483,7 +510,7 @@ def test_backward_through_multiple_reshapes():
     weights = Tensor([[1, 2], [3, 4], [5, 6]])
 
     reshaped = tensor.reshape(2, 3).reshape(3, 2)
-    (reshaped * weights).backward()
+    (reshaped * weights).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, [1, 2, 3, 4, 5, 6])
 
@@ -492,8 +519,8 @@ def test_repeated_reshape_backward_accumulates_leaf_gradients():
     tensor = Tensor(np.arange(6), requires_grad=True)
     result = tensor.reshape(2, 3)
 
-    result.backward()
-    result.backward()
+    result.sum().backward()
+    result.sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, np.full(6, 2.0))
 
@@ -501,7 +528,7 @@ def test_repeated_reshape_backward_accumulates_leaf_gradients():
 def test_view_backward_restores_the_original_gradient_shape():
     tensor = Tensor(np.arange(6), requires_grad=True)
 
-    tensor.view(2, 3).backward()
+    tensor.view(2, 3).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, np.ones(6))
     assert tensor.grad.shape == tensor.shape
@@ -511,7 +538,7 @@ def test_view_backward_uses_upstream_gradient_from_a_larger_graph():
     tensor = Tensor(np.arange(6), requires_grad=True)
     weights = Tensor([[1, 2, 3], [4, 5, 6]])
 
-    (tensor.view(2, 3) * weights).backward()
+    (tensor.view(2, 3) * weights).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, [1, 2, 3, 4, 5, 6])
 
@@ -521,7 +548,7 @@ def test_backward_through_view_and_reshape():
     weights = Tensor([[1, 2], [3, 4], [5, 6]])
 
     result = tensor.view(2, 3).reshape(3, 2)
-    (result * weights).backward()
+    (result * weights).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, [1, 2, 3, 4, 5, 6])
 
@@ -530,8 +557,8 @@ def test_repeated_view_backward_accumulates_leaf_gradients():
     tensor = Tensor(np.arange(6), requires_grad=True)
     result = tensor.view(2, 3)
 
-    result.backward()
-    result.backward()
+    result.sum().backward()
+    result.sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, np.full(6, 2.0))
 
@@ -540,7 +567,7 @@ def test_swapaxes_backward_restores_the_original_gradient_axes():
     tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
     weights = Tensor([[1, 2], [3, 4], [5, 6]])
 
-    (tensor.swapaxes(0, 1) * weights).backward()
+    (tensor.swapaxes(0, 1) * weights).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, [[1, 3, 5], [2, 4, 6]])
     assert tensor.grad.shape == tensor.shape
@@ -551,7 +578,7 @@ def test_swapaxes_backward_supports_negative_axes_on_a_3d_tensor():
     weights = np.arange(1, 25).reshape(2, 4, 3)
     tensor = Tensor(data, requires_grad=True)
 
-    (tensor.swapaxes(-1, -2) * Tensor(weights)).backward()
+    (tensor.swapaxes(-1, -2) * Tensor(weights)).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, np.swapaxes(weights, -1, -2))
     assert tensor.grad.shape == tensor.shape
@@ -562,7 +589,7 @@ def test_backward_through_two_swapaxes_operations():
     weights = Tensor([[1, 2, 3], [4, 5, 6]])
 
     result = tensor.swapaxes(0, 1).swapaxes(0, 1)
-    (result * weights).backward()
+    (result * weights).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, weights.data)
 
@@ -571,8 +598,8 @@ def test_repeated_swapaxes_backward_accumulates_leaf_gradients():
     tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
     result = tensor.swapaxes(0, 1)
 
-    result.backward()
-    result.backward()
+    result.sum().backward()
+    result.sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, np.full((2, 3), 2.0))
 
@@ -581,7 +608,7 @@ def test_T_backward_restores_the_original_gradient_axes():
     tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
     weights = Tensor([[1, 2], [3, 4], [5, 6]])
 
-    (tensor.T() * weights).backward()
+    (tensor.T() * weights).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, weights.data.T)
     assert tensor.grad.shape == tensor.shape
@@ -591,7 +618,7 @@ def test_T_backward_reverses_gradient_axes_for_a_3d_tensor():
     tensor = Tensor(np.arange(24).reshape(2, 3, 4), requires_grad=True)
     weights = Tensor(np.arange(1, 25).reshape(4, 3, 2))
 
-    (tensor.T() * weights).backward()
+    (tensor.T() * weights).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, weights.data.T)
     assert tensor.grad.shape == tensor.shape
@@ -602,7 +629,7 @@ def test_backward_through_two_T_operations():
     weights = Tensor([[1, 2, 3], [4, 5, 6]])
 
     result = tensor.T().T()
-    (result * weights).backward()
+    (result * weights).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, weights.data)
 
@@ -611,8 +638,8 @@ def test_repeated_T_backward_accumulates_leaf_gradients():
     tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
     result = tensor.T()
 
-    result.backward()
-    result.backward()
+    result.sum().backward()
+    result.sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, np.full((2, 3), 2.0))
 
@@ -630,7 +657,7 @@ def test_getitem_backward_scatters_a_slice_gradient():
     tensor = Tensor(np.arange(12).reshape(3, 4), requires_grad=True)
     weights = Tensor([[1, 2], [3, 4], [5, 6]])
 
-    (tensor[:, 1:3] * weights).backward()
+    (tensor[:, 1:3] * weights).sum().backward()
 
     np.testing.assert_array_equal(
         tensor.grad,
@@ -653,7 +680,7 @@ def test_getitem_backward_scatters_boolean_mask_gradients():
     mask = np.array([True, False, True, False])
     weights = Tensor([2, 5])
 
-    (tensor[mask] * weights).backward()
+    (tensor[mask] * weights).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, [2, 0, 5, 0])
 
@@ -662,7 +689,7 @@ def test_getitem_backward_accumulates_repeated_fancy_indices():
     tensor = Tensor([10, 20, 30, 40], requires_grad=True)
     weights = Tensor([1, 2, 3])
 
-    (tensor[[0, 0, 2]] * weights).backward()
+    (tensor[[0, 0, 2]] * weights).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, [3, 0, 3, 0])
 
@@ -672,7 +699,7 @@ def test_getitem_backward_accumulates_repeated_tensor_indices():
     index = Tensor([0, 0, 2], dtype=np.int64)
     weights = Tensor([1, 2, 3])
 
-    (tensor[index] * weights).backward()
+    (tensor[index] * weights).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, [3, 0, 3, 0])
 
@@ -682,7 +709,7 @@ def test_backward_through_multiple_getitem_operations():
     weights = Tensor([2, 3])
 
     result = tensor[2:8][[1, 4]]
-    (result * weights).backward()
+    (result * weights).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, [0, 0, 0, 2, 0, 0, 3, 0, 0, 0])
 
@@ -691,8 +718,8 @@ def test_repeated_getitem_backward_accumulates_leaf_gradients():
     tensor = Tensor([10, 20, 30, 40], requires_grad=True)
     result = tensor[1:3]
 
-    result.backward()
-    result.backward()
+    result.sum().backward()
+    result.sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, [0, 2, 2, 0])
 
@@ -709,7 +736,7 @@ def test_sum_backward_over_all_elements():
 def test_sum_backward_along_a_dimension():
     tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
 
-    tensor.sum(dim=1).backward()
+    tensor.sum(dim=1).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, np.ones((2, 3)))
 
@@ -718,7 +745,7 @@ def test_sum_backward_broadcasts_upstream_gradient():
     tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
     weights = Tensor([2, 3, 4])
 
-    (tensor.sum(dim=0) * weights).backward()
+    (tensor.sum(dim=0) * weights).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, [[2, 3, 4], [2, 3, 4]])
 
@@ -727,7 +754,7 @@ def test_sum_backward_supports_multiple_dimensions_and_keepdims():
     tensor = Tensor(np.arange(24).reshape(2, 3, 4), requires_grad=True)
     weights = Tensor([[[2], [3], [4]]])
 
-    (tensor.sum(dim=(0, 2), keepdims=True) * weights).backward()
+    (tensor.sum(dim=(0, 2), keepdims=True) * weights).sum().backward()
 
     expected = np.broadcast_to(np.array([2, 3, 4]).reshape(1, 3, 1), tensor.shape)
     np.testing.assert_array_equal(tensor.grad, expected)
@@ -744,7 +771,7 @@ def test_mean_backward_over_all_elements():
 def test_mean_backward_along_a_dimension():
     tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
 
-    tensor.mean(dim=1).backward()
+    tensor.mean(dim=1).sum().backward()
 
     np.testing.assert_allclose(tensor.grad, np.full((2, 3), 1 / 3))
 
@@ -753,7 +780,7 @@ def test_mean_backward_broadcasts_and_scales_upstream_gradient():
     tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
     weights = Tensor([2, 4, 6])
 
-    (tensor.mean(dim=0) * weights).backward()
+    (tensor.mean(dim=0) * weights).sum().backward()
 
     np.testing.assert_allclose(tensor.grad, [[1, 2, 3], [1, 2, 3]])
 
@@ -762,7 +789,7 @@ def test_mean_backward_supports_multiple_dimensions():
     tensor = Tensor(np.arange(24).reshape(2, 3, 4), requires_grad=True)
     weights = Tensor([1, 2, 3])
 
-    (tensor.mean(dim=(0, 2)) * weights).backward()
+    (tensor.mean(dim=(0, 2)) * weights).sum().backward()
 
     expected = np.broadcast_to(
         np.array([1, 2, 3]).reshape(1, 3, 1) / 8,
@@ -793,7 +820,7 @@ def test_sum_and_mean_backward_for_dimension_and_keepdims_combinations(
     data = np.arange(1, 13).reshape(3, 4)
     tensor = Tensor(data, requires_grad=True)
 
-    getattr(tensor, reduction)(dim=dim, keepdims=keepdims).backward()
+    getattr(tensor, reduction)(dim=dim, keepdims=keepdims).sum().backward()
 
     reduced_element_count = data.size if dim is None else data.shape[dim]
     scale = 1 if reduction == "sum" else 1 / reduced_element_count
@@ -811,7 +838,7 @@ def test_var_backward_over_all_elements():
 def test_var_backward_along_a_dimension():
     tensor = Tensor([[1, 2, 3], [4, 6, 8]], requires_grad=True)
 
-    tensor.var(dim=0).backward()
+    tensor.var(dim=0).sum().backward()
 
     np.testing.assert_allclose(
         tensor.grad,
@@ -823,7 +850,7 @@ def test_var_backward_broadcasts_upstream_gradient():
     tensor = Tensor([[1, 2, 3], [4, 6, 8]], requires_grad=True)
     weights = Tensor([2, 3, 4])
 
-    (tensor.var(dim=0) * weights).backward()
+    (tensor.var(dim=0) * weights).sum().backward()
 
     np.testing.assert_allclose(
         tensor.grad,
@@ -834,7 +861,7 @@ def test_var_backward_broadcasts_upstream_gradient():
 def test_var_backward_supports_keepdims():
     tensor = Tensor([[1, 2, 3], [4, 6, 8]], requires_grad=True)
 
-    tensor.var(dim=1, keepdims=True).backward()
+    tensor.var(dim=1, keepdims=True).sum().backward()
 
     expected = 2 * (tensor.data - tensor.data.mean(axis=1, keepdims=True)) / 2
     np.testing.assert_allclose(tensor.grad, expected)
@@ -854,7 +881,7 @@ def test_std_backward_over_all_elements():
 def test_std_backward_along_a_dimension():
     tensor = Tensor([[1, 2, 3], [4, 6, 8]], requires_grad=True)
 
-    tensor.std(dim=0).backward()
+    tensor.std(dim=0).sum().backward()
 
     np.testing.assert_allclose(
         tensor.grad,
@@ -866,7 +893,7 @@ def test_std_backward_broadcasts_upstream_gradient():
     tensor = Tensor([[1, 2, 3], [4, 6, 8]], requires_grad=True)
     weights = Tensor([2, 3, 4])
 
-    (tensor.std(dim=0) * weights).backward()
+    (tensor.std(dim=0) * weights).sum().backward()
 
     np.testing.assert_allclose(
         tensor.grad,
@@ -881,7 +908,7 @@ def test_std_backward_through_a_constant_column_is_nan():
     tensor = Tensor([[5, 1], [5, 2], [5, 3]], requires_grad=True)
 
     with np.errstate(divide="ignore", invalid="ignore"):
-        tensor.std(dim=0).backward()
+        tensor.std(dim=0).sum().backward()
 
     assert np.isnan(tensor.grad[:, 0]).all()
     np.testing.assert_allclose(
@@ -920,8 +947,8 @@ def test_repeated_backward_through_clone_accumulates_at_the_source():
     tensor = Tensor([1, 2, 3], requires_grad=True)
     result = (tensor.clone() * 3).sum()
 
-    result.backward()
-    result.backward()
+    result.sum().backward()
+    result.sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, [6, 6, 6])
 
