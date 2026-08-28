@@ -770,3 +770,75 @@ def test_repeated_sum_and_mean_backward_accumulate_leaf_gradients():
     averaged.backward()
 
     np.testing.assert_allclose(tensor.grad, np.full(6, 1 + 1 / 6))
+
+
+def test_var_backward_over_all_elements():
+    tensor = Tensor([1, 2, 3, 4], requires_grad=True)
+
+    tensor.var().backward()
+
+    np.testing.assert_allclose(tensor.grad, [-0.75, -0.25, 0.25, 0.75])
+
+
+def test_var_backward_along_a_dimension():
+    tensor = Tensor([[1, 2, 3], [4, 6, 8]], requires_grad=True)
+
+    tensor.var(dim=0).backward()
+
+    np.testing.assert_allclose(
+        tensor.grad,
+        [[-1.5, -2.0, -2.5], [1.5, 2.0, 2.5]],
+    )
+
+
+def test_var_backward_broadcasts_upstream_gradient():
+    tensor = Tensor([[1, 2, 3], [4, 6, 8]], requires_grad=True)
+    weights = Tensor([2, 3, 4])
+
+    (tensor.var(dim=0) * weights).backward()
+
+    np.testing.assert_allclose(
+        tensor.grad,
+        [[-3, -6, -10], [3, 6, 10]],
+    )
+
+
+def test_var_backward_supports_keepdims():
+    tensor = Tensor([[1, 2, 3], [4, 6, 8]], requires_grad=True)
+
+    tensor.var(dim=1, keepdims=True).backward()
+
+    expected = 2 * (tensor.data - tensor.data.mean(axis=1, keepdims=True)) / 3
+    np.testing.assert_allclose(tensor.grad, expected)
+
+
+def test_std_backward_over_all_elements():
+    tensor = Tensor([1, 2, 3, 4], requires_grad=True)
+
+    tensor.std().backward()
+
+    expected = (tensor.data - tensor.data.mean()) / (4 * tensor.data.std())
+    np.testing.assert_allclose(tensor.grad, expected)
+
+
+def test_std_backward_along_a_dimension():
+    tensor = Tensor([[1, 2, 3], [4, 6, 8]], requires_grad=True)
+
+    tensor.std(dim=0).backward()
+
+    np.testing.assert_allclose(
+        tensor.grad,
+        [[-0.5, -0.5, -0.5], [0.5, 0.5, 0.5]],
+    )
+
+
+def test_std_backward_broadcasts_upstream_gradient():
+    tensor = Tensor([[1, 2, 3], [4, 6, 8]], requires_grad=True)
+    weights = Tensor([2, 3, 4])
+
+    (tensor.std(dim=0) * weights).backward()
+
+    np.testing.assert_allclose(
+        tensor.grad,
+        [[-1, -1.5, -2], [1, 1.5, 2]],
+    )

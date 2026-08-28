@@ -687,3 +687,95 @@ def test_mean_tracks_graph_metadata_and_requires_grad():
 
 def test_mean_of_an_untracked_tensor_does_not_require_grad():
     assert not Tensor([1, 2, 3]).mean().requires_grad
+
+
+def test_var_reduces_all_elements_to_a_scalar():
+    tensor = Tensor([1, 2, 3, 4])
+
+    result = tensor.var()
+
+    assert result.data == pytest.approx(1.25)
+    assert result.shape == ()
+
+
+def test_var_reduces_along_a_dimension():
+    data = np.array([[1, 2, 3], [4, 6, 8]])
+    tensor = Tensor(data)
+
+    np.testing.assert_allclose(tensor.var(dim=0).data, data.var(axis=0))
+    np.testing.assert_allclose(tensor.var(dim=1).data, data.var(axis=1))
+
+
+def test_var_supports_multiple_and_negative_dimensions():
+    data = np.arange(24).reshape(2, 3, 4)
+    tensor = Tensor(data)
+
+    multiple = tensor.var(dim=(0, 2))
+    negative = tensor.var(dim=-1)
+
+    np.testing.assert_allclose(multiple.data, data.var(axis=(0, 2)))
+    np.testing.assert_allclose(negative.data, data.var(axis=-1))
+
+
+def test_var_can_keep_reduced_dimensions():
+    data = np.array([[1, 2, 3], [4, 6, 8]])
+    tensor = Tensor(data)
+
+    result = tensor.var(dim=1, keepdims=True)
+
+    np.testing.assert_allclose(result.data, data.var(axis=1, keepdims=True))
+    assert result.shape == (2, 1)
+
+
+def test_var_propagates_requires_grad():
+    tracked = Tensor([1, 2, 3], requires_grad=True)
+    plain = Tensor([1, 2, 3])
+
+    assert tracked.var().requires_grad
+    assert not plain.var().requires_grad
+
+
+def test_std_reduces_all_elements_to_a_scalar():
+    tensor = Tensor([1, 2, 3, 4])
+
+    result = tensor.std()
+
+    assert result.data == pytest.approx(np.std([1, 2, 3, 4]))
+    assert result.shape == ()
+
+
+def test_std_reduces_along_a_dimension():
+    data = np.array([[1, 2, 3], [4, 6, 8]])
+    tensor = Tensor(data)
+
+    np.testing.assert_allclose(tensor.std(dim=0).data, data.std(axis=0))
+    np.testing.assert_allclose(tensor.std(dim=1).data, data.std(axis=1))
+
+
+def test_std_supports_multiple_and_negative_dimensions():
+    data = np.arange(24).reshape(2, 3, 4)
+    tensor = Tensor(data)
+
+    multiple = tensor.std(dim=(0, 2))
+    negative = tensor.std(dim=-1)
+
+    np.testing.assert_allclose(multiple.data, data.std(axis=(0, 2)))
+    np.testing.assert_allclose(negative.data, data.std(axis=-1))
+
+
+def test_std_can_keep_reduced_dimensions():
+    data = np.array([[1, 2, 3], [4, 6, 8]])
+    tensor = Tensor(data)
+
+    result = tensor.std(dim=1, keepdims=True)
+
+    np.testing.assert_allclose(result.data, data.std(axis=1, keepdims=True))
+    assert result.shape == (2, 1)
+
+
+def test_std_propagates_requires_grad():
+    tracked = Tensor([1, 2, 3], requires_grad=True)
+    plain = Tensor([1, 2, 3])
+
+    assert tracked.std().requires_grad
+    assert not plain.std().requires_grad

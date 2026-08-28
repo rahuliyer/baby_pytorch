@@ -228,6 +228,13 @@ class Tensor:
 
         return out
 
+    def var(self, dim=None, keepdims=False):
+        mean = self.mean(dim=dim, keepdims=True)
+        return ((self - mean) ** 2).mean(dim=dim, keepdims=keepdims)
+
+    def std(self, dim=None, keepdims=False):
+        return self.var(dim, keepdims) ** 0.5
+    
     def backward(self):
         nodes = topo_sort(self)
         nodes.reverse()
