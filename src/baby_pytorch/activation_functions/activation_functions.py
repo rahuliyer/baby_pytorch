@@ -1,9 +1,12 @@
 import math
+
+import numpy as np
+
 from baby_pytorch.tensor import Tensor
 
 def tanh(x):
     out = Tensor(
-        data=math.tanh(x.data),
+        data=np.tanh(x.data),
         op='tanh',
         children=[x],
         requires_grad=x.requires_grad

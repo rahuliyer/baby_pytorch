@@ -1,6 +1,7 @@
 from baby_pytorch.tensor import Tensor
 from baby_pytorch.activation_functions import tanh, sigmoid, relu
 
+import numpy as np
 import pytest
 
 def test_tanh():
@@ -12,6 +13,15 @@ def test_tanh():
     assert len(y.children) == 1
     assert x in y.children
     assert y.op == 'tanh'
+
+
+def test_tanh_is_elementwise_for_tensor_arrays():
+    tensor = Tensor([[-2.0, -0.5], [0.0, 1.5]])
+
+    result = tanh(tensor)
+
+    np.testing.assert_allclose(result.data, np.tanh(tensor.data))
+    assert result.shape == tensor.shape
 
 def test_sigmoid():
     x = Tensor(2)
