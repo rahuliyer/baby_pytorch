@@ -4,7 +4,9 @@ from baby_pytorch.nn.module import Module
 
 class MLP(Module):
     def __init__(self, input_size, hidden_layers, out_size, activation):
-        if isinstance(activation, Module) and activation.parameters():
+        if not isinstance(activation, Module):
+            raise TypeError("MLP activation must be a Module.")
+        if activation.parameters():
             raise ValueError("MLP activations must be parameter-free.")
 
         layer_sizes = [input_size, *hidden_layers, out_size]
@@ -17,10 +19,7 @@ class MLP(Module):
     def forward(self, x, training):
         for layer in self.layers[:-1]:
             x = layer(x, training=training)
-            if isinstance(self.activation, Module):
-                x = self.activation(x, training=training)
-            else:
-                x = self.activation(x)
+            x = self.activation(x, training=training)
 
         # The final layer produces logits, so it has no activation.
         return self.layers[-1](x, training=training)
@@ -55,12 +54,10 @@ class MLP(Module):
             offset += weight_count
 
     def __repr__(self):
-        activation_name = (
-            repr(self.activation)
-            if isinstance(self.activation, Module)
-            else getattr(self.activation, "__name__", repr(self.activation))
-        )
         layers = "\n".join(
             f"  ({index}): {layer!r}" for index, layer in enumerate(self.layers)
         )
-        return f"{self.__class__.__name__}(\n{layers}\n  activation: {activation_name}\n)"
+        return (
+            f"{self.__class__.__name__}(\n{layers}\n"
+            f"  activation: {self.activation!r}\n)"
+        )

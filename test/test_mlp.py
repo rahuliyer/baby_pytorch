@@ -7,7 +7,7 @@ from baby_pytorch.tensor import Tensor
 
 
 def test_mlp_is_a_module_with_array_backed_linear_layers():
-    mlp = MLP(3, [5, 4], 2, tanh)
+    mlp = MLP(3, [5, 4], 2, Tanh())
 
     assert isinstance(mlp, Module)
     assert all(isinstance(layer, Linear) for layer in mlp.layers)
@@ -20,7 +20,7 @@ def test_mlp_is_a_module_with_array_backed_linear_layers():
 
 
 def test_mlp_batched_forward_has_expected_shape():
-    mlp = MLP(3, [5, 4], 2, tanh)
+    mlp = MLP(3, [5, 4], 2, Tanh())
 
     result = mlp(Tensor(np.ones((7, 3))))
 
@@ -28,7 +28,7 @@ def test_mlp_batched_forward_has_expected_shape():
 
 
 def test_mlp_parameters_are_flattened_in_layer_order():
-    mlp = MLP(3, [5, 4], 2, tanh)
+    mlp = MLP(3, [5, 4], 2, Tanh())
 
     expected = [
         parameter
@@ -41,10 +41,7 @@ def test_mlp_parameters_are_flattened_in_layer_order():
 
 
 def test_empty_hidden_layers_only_apply_the_output_linear_layer():
-    def activation_that_must_not_run(_):
-        raise AssertionError("The output layer must not have an activation")
-
-    mlp = MLP(3, [], 2, activation_that_must_not_run)
+    mlp = MLP(3, [], 2, Tanh())
     mlp.layers[0].weights = Tensor(
         [[1, 0], [0, 1], [1, -1]],
         requires_grad=True,
@@ -57,21 +54,17 @@ def test_empty_hidden_layers_only_apply_the_output_linear_layer():
     assert len(mlp.layers) == 1
 
 
-def test_mlp_supports_functional_and_module_activations():
-    functional_mlp = MLP(2, [2], 1, tanh)
-    module_mlp = MLP(2, [2], 1, Tanh())
-
-    for mlp in (functional_mlp, module_mlp):
-        mlp.layers[0].weights = Tensor(np.eye(2), requires_grad=True)
-        mlp.layers[0].bias = Tensor(np.zeros(2), requires_grad=True)
-        mlp.layers[1].weights = Tensor([[1], [-2]], requires_grad=True)
-        mlp.layers[1].bias = Tensor([0.25], requires_grad=True)
+def test_mlp_supports_module_activations():
+    mlp = MLP(2, [2], 1, Tanh())
+    mlp.layers[0].weights = Tensor(np.eye(2), requires_grad=True)
+    mlp.layers[0].bias = Tensor(np.zeros(2), requires_grad=True)
+    mlp.layers[1].weights = Tensor([[1], [-2]], requires_grad=True)
+    mlp.layers[1].bias = Tensor([0.25], requires_grad=True)
 
     inputs = Tensor([[0.5, -1.0], [1.5, 0.25]])
     expected = np.tanh(inputs.data) @ np.array([[1], [-2]]) + 0.25
 
-    np.testing.assert_allclose(functional_mlp(inputs).data, expected)
-    np.testing.assert_allclose(module_mlp(inputs).data, expected)
+    np.testing.assert_allclose(mlp(inputs).data, expected)
 
 
 def test_mlp_backward_populates_shaped_parameter_gradients():
@@ -129,6 +122,11 @@ def test_mlp_save_and_load_use_independent_tensor_leaves():
 def test_mlp_rejects_parameterized_module_activations():
     with pytest.raises(ValueError, match="activations must be parameter-free"):
         MLP(2, [2], 1, BatchNorm1d(2))
+
+
+def test_mlp_rejects_functional_activations():
+    with pytest.raises(TypeError, match="activation must be a Module"):
+        MLP(2, [2], 1, tanh)
 
 
 def test_mlp_load_rejects_the_wrong_number_of_weights():

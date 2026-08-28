@@ -5,26 +5,16 @@ from baby_pytorch import Tensor
 from baby_pytorch.loss import MSE
 
 
-def test_mse_unequal_length():
-    predictions = [1, 2, 3]
-    targets = [1, 2]
-
-    with pytest.raises(ValueError):
+@pytest.mark.parametrize(
+    ("predictions", "targets", "message"),
+    [
+        ([1.0, 2.0], Tensor([1.0, 2.0]), "predictions must be a Tensor"),
+        (Tensor([1.0, 2.0]), np.array([1.0, 2.0]), "targets must be a Tensor"),
+    ],
+)
+def test_mse_requires_tensor_inputs(predictions, targets, message):
+    with pytest.raises(TypeError, match=message):
         MSE(predictions, targets)
-
-
-def test_mse_calculation():
-    predictions = [
-        Tensor(1, requires_grad=True),
-        Tensor(2, requires_grad=True),
-        Tensor(3, requires_grad=True)
-    ]
-
-    targets = [1, 2, 4]
-
-    expected_loss = ((1 - 1) ** 2 + (2 - 2) ** 2 + (3 - 4) ** 2) / 3
-
-    assert MSE(predictions, targets).data == expected_loss
 
 
 def test_mse_accepts_array_backed_prediction_and_target_tensors():
