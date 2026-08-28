@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from baby_pytorch.activation_functions import tanh
 from baby_pytorch.nn import BatchNorm1d, Linear, MLP, Module, Tanh
@@ -125,34 +126,9 @@ def test_mlp_save_and_load_use_independent_tensor_leaves():
         assert not np.shares_memory(parameter.data, weight.data)
 
 
-def test_mlp_includes_module_activation_parameters_and_state():
-    activation = BatchNorm1d(2)
-    mlp = MLP(2, [2], 1, activation)
-    activation.gamma.data[:] = [1.5, 0.5]
-    activation.beta.data[:] = [-0.5, 2.0]
-    activation.running_mean.data[:] = [3.0, 4.0]
-    activation.running_var.data[:] = [5.0, 6.0]
-
-    assert mlp.parameters() == [
-        *mlp.layers[0].parameters(),
-        *mlp.layers[1].parameters(),
-        activation.gamma,
-        activation.beta,
-    ]
-
-    saved = mlp.save_weights()
-
-    assert len(saved) == 8
-    restored = MLP(2, [2], 1, BatchNorm1d(2))
-    original_parameters = restored.parameters()
-    restored.load_weights(saved)
-
-    assert all(
-        loaded is original
-        for loaded, original in zip(restored.parameters(), original_parameters)
-    )
-    for actual, expected in zip(restored.save_weights(), saved):
-        np.testing.assert_array_equal(actual.data, expected.data)
+def test_mlp_rejects_parameterized_module_activations():
+    with pytest.raises(ValueError, match="activations must be parameter-free"):
+        MLP(2, [2], 1, BatchNorm1d(2))
 
 
 def test_mlp_load_rejects_the_wrong_number_of_weights():
