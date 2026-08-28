@@ -561,6 +561,16 @@ def test_getitem_supports_fancy_integer_indices():
     np.testing.assert_array_equal(result.data, [40, 20, 20])
 
 
+def test_getitem_supports_an_integer_tensor_index():
+    tensor = Tensor(np.arange(15).reshape(5, 3))
+    index = Tensor([3, 1, 1], dtype=np.int64)
+
+    result = tensor[index]
+
+    np.testing.assert_array_equal(result.data, tensor.data[[3, 1, 1]])
+    assert result.shape == (3, 3)
+
+
 def test_getitem_tracks_graph_metadata_and_requires_grad():
     tensor = Tensor(np.arange(6), requires_grad=True)
 

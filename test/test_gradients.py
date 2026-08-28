@@ -667,6 +667,16 @@ def test_getitem_backward_accumulates_repeated_fancy_indices():
     np.testing.assert_array_equal(tensor.grad, [3, 0, 3, 0])
 
 
+def test_getitem_backward_accumulates_repeated_tensor_indices():
+    tensor = Tensor([10, 20, 30, 40], requires_grad=True)
+    index = Tensor([0, 0, 2], dtype=np.int64)
+    weights = Tensor([1, 2, 3])
+
+    (tensor[index] * weights).backward()
+
+    np.testing.assert_array_equal(tensor.grad, [3, 0, 3, 0])
+
+
 def test_backward_through_multiple_getitem_operations():
     tensor = Tensor(np.arange(10), requires_grad=True)
     weights = Tensor([2, 3])
