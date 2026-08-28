@@ -1,5 +1,3 @@
-import math
-
 import numpy as np
 
 from baby_pytorch.tensor import Tensor
@@ -15,14 +13,8 @@ def tanh(x):
     return out
 
 def sigmoid(x):
-    if x.data > 0:
-        val = 1.0 / (1 + math.exp(-1 * x.data))
-    else:
-        e_x = math.exp(x.data)
-        val = e_x / (1 + e_x)
-
     out = Tensor(
-        data=val,
+        data=np.exp(-np.logaddexp(0, -x.data)),
         op='sigmoid',
         children=[x],
         requires_grad=x.requires_grad
@@ -32,7 +24,7 @@ def sigmoid(x):
 
 def relu(x):
     out = Tensor(
-        data=max(0, x.data),
+        data=np.maximum(0, x.data),
         op='relu',
         children=[x],
         requires_grad=x.requires_grad
