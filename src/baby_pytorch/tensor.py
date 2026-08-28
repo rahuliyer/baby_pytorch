@@ -228,12 +228,21 @@ class Tensor:
 
         return out
 
-    def var(self, dim=None, keepdims=False):
+    def var(self, dim=None, keepdims=False, correction=1):
         mean = self.mean(dim=dim, keepdims=True)
-        return ((self - mean) ** 2).mean(dim=dim, keepdims=keepdims)
+        reduced_element_count = self.data.size // mean.data.size
+        squared_deviations = ((self - mean) ** 2).sum(
+            dim=dim,
+            keepdims=keepdims,
+        )
+        return squared_deviations / (reduced_element_count - correction)
 
-    def std(self, dim=None, keepdims=False):
-        return self.var(dim, keepdims) ** 0.5
+    def std(self, dim=None, keepdims=False, correction=1):
+        return self.var(
+            dim=dim,
+            keepdims=keepdims,
+            correction=correction,
+        ) ** 0.5
     
     def backward(self):
         nodes = topo_sort(self)

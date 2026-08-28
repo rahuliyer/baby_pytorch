@@ -712,7 +712,7 @@ def test_var_reduces_all_elements_to_a_scalar():
 
     result = tensor.var()
 
-    assert result.data == pytest.approx(1.25)
+    assert result.data == pytest.approx(5 / 3)
     assert result.shape == ()
 
 
@@ -720,8 +720,8 @@ def test_var_reduces_along_a_dimension():
     data = np.array([[1, 2, 3], [4, 6, 8]])
     tensor = Tensor(data)
 
-    np.testing.assert_allclose(tensor.var(dim=0).data, data.var(axis=0))
-    np.testing.assert_allclose(tensor.var(dim=1).data, data.var(axis=1))
+    np.testing.assert_allclose(tensor.var(dim=0).data, data.var(axis=0, ddof=1))
+    np.testing.assert_allclose(tensor.var(dim=1).data, data.var(axis=1, ddof=1))
 
 
 def test_var_supports_multiple_and_negative_dimensions():
@@ -731,8 +731,8 @@ def test_var_supports_multiple_and_negative_dimensions():
     multiple = tensor.var(dim=(0, 2))
     negative = tensor.var(dim=-1)
 
-    np.testing.assert_allclose(multiple.data, data.var(axis=(0, 2)))
-    np.testing.assert_allclose(negative.data, data.var(axis=-1))
+    np.testing.assert_allclose(multiple.data, data.var(axis=(0, 2), ddof=1))
+    np.testing.assert_allclose(negative.data, data.var(axis=-1, ddof=1))
 
 
 def test_var_can_keep_reduced_dimensions():
@@ -741,7 +741,10 @@ def test_var_can_keep_reduced_dimensions():
 
     result = tensor.var(dim=1, keepdims=True)
 
-    np.testing.assert_allclose(result.data, data.var(axis=1, keepdims=True))
+    np.testing.assert_allclose(
+        result.data,
+        data.var(axis=1, keepdims=True, ddof=1),
+    )
     assert result.shape == (2, 1)
 
 
@@ -758,7 +761,7 @@ def test_std_reduces_all_elements_to_a_scalar():
 
     result = tensor.std()
 
-    assert result.data == pytest.approx(np.std([1, 2, 3, 4]))
+    assert result.data == pytest.approx(np.std([1, 2, 3, 4], ddof=1))
     assert result.shape == ()
 
 
@@ -766,8 +769,8 @@ def test_std_reduces_along_a_dimension():
     data = np.array([[1, 2, 3], [4, 6, 8]])
     tensor = Tensor(data)
 
-    np.testing.assert_allclose(tensor.std(dim=0).data, data.std(axis=0))
-    np.testing.assert_allclose(tensor.std(dim=1).data, data.std(axis=1))
+    np.testing.assert_allclose(tensor.std(dim=0).data, data.std(axis=0, ddof=1))
+    np.testing.assert_allclose(tensor.std(dim=1).data, data.std(axis=1, ddof=1))
 
 
 def test_std_supports_multiple_and_negative_dimensions():
@@ -777,8 +780,8 @@ def test_std_supports_multiple_and_negative_dimensions():
     multiple = tensor.std(dim=(0, 2))
     negative = tensor.std(dim=-1)
 
-    np.testing.assert_allclose(multiple.data, data.std(axis=(0, 2)))
-    np.testing.assert_allclose(negative.data, data.std(axis=-1))
+    np.testing.assert_allclose(multiple.data, data.std(axis=(0, 2), ddof=1))
+    np.testing.assert_allclose(negative.data, data.std(axis=-1, ddof=1))
 
 
 def test_std_can_keep_reduced_dimensions():
@@ -787,7 +790,10 @@ def test_std_can_keep_reduced_dimensions():
 
     result = tensor.std(dim=1, keepdims=True)
 
-    np.testing.assert_allclose(result.data, data.std(axis=1, keepdims=True))
+    np.testing.assert_allclose(
+        result.data,
+        data.std(axis=1, keepdims=True, ddof=1),
+    )
     assert result.shape == (2, 1)
 
 
@@ -799,13 +805,13 @@ def test_std_propagates_requires_grad():
     assert not plain.std().requires_grad
 
 
-def test_var_and_std_use_population_statistics():
+def test_var_and_std_use_sample_statistics_by_default():
     tensor = Tensor([1, 2, 3, 4])
 
-    assert tensor.var().data == pytest.approx(np.var([1, 2, 3, 4], ddof=0))
-    assert tensor.std().data == pytest.approx(np.std([1, 2, 3, 4], ddof=0))
-    assert tensor.var().data != pytest.approx(np.var([1, 2, 3, 4], ddof=1))
-    assert tensor.std().data != pytest.approx(np.std([1, 2, 3, 4], ddof=1))
+    assert tensor.var().data == pytest.approx(np.var([1, 2, 3, 4], ddof=1))
+    assert tensor.std().data == pytest.approx(np.std([1, 2, 3, 4], ddof=1))
+    assert tensor.var().data != pytest.approx(np.var([1, 2, 3, 4], ddof=0))
+    assert tensor.std().data != pytest.approx(np.std([1, 2, 3, 4], ddof=0))
 
 
 def test_std_of_a_constant_column_is_finite():
@@ -813,5 +819,5 @@ def test_std_of_a_constant_column_is_finite():
 
     result = tensor.std(dim=0)
 
-    np.testing.assert_allclose(result.data, [0, np.sqrt(2 / 3)])
+    np.testing.assert_allclose(result.data, [0, 1])
     assert np.isfinite(result.data).all()

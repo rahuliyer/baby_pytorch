@@ -795,7 +795,7 @@ def test_var_backward_over_all_elements():
 
     tensor.var().backward()
 
-    np.testing.assert_allclose(tensor.grad, [-0.75, -0.25, 0.25, 0.75])
+    np.testing.assert_allclose(tensor.grad, [-1, -1 / 3, 1 / 3, 1])
 
 
 def test_var_backward_along_a_dimension():
@@ -805,7 +805,7 @@ def test_var_backward_along_a_dimension():
 
     np.testing.assert_allclose(
         tensor.grad,
-        [[-1.5, -2.0, -2.5], [1.5, 2.0, 2.5]],
+        [[-3, -4, -5], [3, 4, 5]],
     )
 
 
@@ -817,7 +817,7 @@ def test_var_backward_broadcasts_upstream_gradient():
 
     np.testing.assert_allclose(
         tensor.grad,
-        [[-3, -6, -10], [3, 6, 10]],
+        [[-6, -12, -20], [6, 12, 20]],
     )
 
 
@@ -826,7 +826,7 @@ def test_var_backward_supports_keepdims():
 
     tensor.var(dim=1, keepdims=True).backward()
 
-    expected = 2 * (tensor.data - tensor.data.mean(axis=1, keepdims=True)) / 3
+    expected = 2 * (tensor.data - tensor.data.mean(axis=1, keepdims=True)) / 2
     np.testing.assert_allclose(tensor.grad, expected)
 
 
@@ -835,7 +835,9 @@ def test_std_backward_over_all_elements():
 
     tensor.std().backward()
 
-    expected = (tensor.data - tensor.data.mean()) / (4 * tensor.data.std())
+    expected = (tensor.data - tensor.data.mean()) / (
+        3 * tensor.data.std(ddof=1)
+    )
     np.testing.assert_allclose(tensor.grad, expected)
 
 
@@ -846,7 +848,7 @@ def test_std_backward_along_a_dimension():
 
     np.testing.assert_allclose(
         tensor.grad,
-        [[-0.5, -0.5, -0.5], [0.5, 0.5, 0.5]],
+        [[-1 / np.sqrt(2)] * 3, [1 / np.sqrt(2)] * 3],
     )
 
 
@@ -858,6 +860,21 @@ def test_std_backward_broadcasts_upstream_gradient():
 
     np.testing.assert_allclose(
         tensor.grad,
-        [[-1, -1.5, -2], [1, 1.5, 2]],
+        [
+            [-np.sqrt(2), -3 / np.sqrt(2), -2 * np.sqrt(2)],
+            [np.sqrt(2), 3 / np.sqrt(2), 2 * np.sqrt(2)],
+        ],
     )
 
+
+def test_std_backward_through_a_constant_column_is_nan():
+    tensor = Tensor([[5, 1], [5, 2], [5, 3]], requires_grad=True)
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        tensor.std(dim=0).backward()
+
+    assert np.isnan(tensor.grad[:, 0]).all()
+    np.testing.assert_allclose(
+        tensor.grad[:, 1],
+        [-0.5, 0, 0.5],
+    )
