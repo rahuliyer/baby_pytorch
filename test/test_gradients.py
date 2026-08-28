@@ -878,3 +878,48 @@ def test_std_backward_through_a_constant_column_is_nan():
         tensor.grad[:, 1],
         [-0.5, 0, 0.5],
     )
+
+
+def test_clone_backward_passes_gradient_to_the_source():
+    tensor = Tensor([1, 2, 3], requires_grad=True)
+
+    tensor.clone().sum().backward()
+
+    np.testing.assert_array_equal(tensor.grad, [1, 1, 1])
+
+
+def test_clone_backward_preserves_nonuniform_upstream_gradient():
+    tensor = Tensor([1, 2, 3], requires_grad=True)
+    weights = Tensor([2, 3, 5])
+
+    (tensor.clone() * weights).sum().backward()
+
+    np.testing.assert_array_equal(tensor.grad, weights.data)
+
+
+def test_clone_backward_keeps_a_derived_tensor_connected():
+    tensor = Tensor([1, 2, 3], requires_grad=True)
+    derived = tensor * 2
+
+    (derived.clone() ** 2).sum().backward()
+
+    np.testing.assert_array_equal(tensor.grad, [8, 16, 24])
+
+
+def test_repeated_backward_through_clone_accumulates_at_the_source():
+    tensor = Tensor([1, 2, 3], requires_grad=True)
+    result = (tensor.clone() * 3).sum()
+
+    result.backward()
+    result.backward()
+
+    np.testing.assert_array_equal(tensor.grad, [6, 6, 6])
+
+
+def test_detach_disconnects_a_derived_tensor_from_its_source():
+    tensor = Tensor([1, 2, 3], requires_grad=True)
+    detached = (tensor * 2).detach()
+
+    (detached ** 2).sum().backward()
+
+    np.testing.assert_array_equal(tensor.grad, [0, 0, 0])

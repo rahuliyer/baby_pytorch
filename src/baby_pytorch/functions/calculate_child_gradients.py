@@ -9,7 +9,7 @@ def calculate_child_gradients(tensor):
                 tensor.children[0].grad += unbroadcast(
                     tensor.grad,
                     tensor.children[0].grad.shape
-                ) 
+                )
 
             if tensor.children[1].requires_grad:
                 tensor.children[1].grad += unbroadcast(
@@ -51,7 +51,7 @@ def calculate_child_gradients(tensor):
             if tensor.children[1].requires_grad:
                 tensor.children[1].grad += unbroadcast(
                     (tensor.grad * tensor.data * np.log(tensor.children[0].data)),
-                     tensor.children[1].grad.shape                
+                     tensor.children[1].grad.shape
                 )
         case 'log':
             if tensor.children[0].requires_grad:
@@ -81,7 +81,7 @@ def calculate_child_gradients(tensor):
             c1, c2 = tensor.children
             if not c1.requires_grad and not c2.requires_grad:
                 return
-            
+
             c1_is_vector = c1.data.ndim == 1
             c2_is_vector = c2.data.ndim == 1
             grad = tensor.grad
@@ -139,7 +139,7 @@ def calculate_child_gradients(tensor):
         case 'swapaxes':
             if tensor.children[0].requires_grad:
                 tensor.children[0].grad += tensor.grad.swapaxes(
-                    tensor.ctx["axis1"], 
+                    tensor.ctx["axis1"],
                     tensor.ctx["axis2"]
                 )
         case 'T':
@@ -172,10 +172,12 @@ def calculate_child_gradients(tensor):
                 n = tensor.children[0].data.size // tensor.data.size
 
                 tensor.children[0].grad += (grad / n)
+        case 'clone':
+            if tensor.children[0].requires_grad:
+                tensor.children[0].grad += tensor.grad
         case '':
             pass
         case _:
             raise ValueError(f"Unsupported op: {tensor.op}")
 
     assert tensor.data.shape == tensor.grad.shape
-            

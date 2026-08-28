@@ -42,5 +42,5 @@ def test_relu_at_zero_and_negative():
     y = relu(x)
 
     y.backward()
-    
+
     assert x.grad == 0

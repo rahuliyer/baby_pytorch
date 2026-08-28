@@ -7,14 +7,15 @@ from baby_pytorch.functions import topo_sort
 from baby_pytorch.functions import calculate_child_gradients
 
 class Tensor:
-    def __init__(self, 
+    def __init__(self,
                  data,
-                 children=None, 
-                 op='', 
-                 requires_grad=False, 
+                 children=None,
+                 op='',
+                 requires_grad=False,
                  label='',
                  dtype=float):
         self.data = np.array(data, dtype=dtype)
+        self.dtype=dtype
         self.children = [] if children is None else children
         self.op = op
         self.requires_grad = requires_grad
@@ -187,6 +188,9 @@ class Tensor:
         return out
 
     def __getitem__(self, index):
+        if isinstance(index, Tensor):
+            index = index.data
+
         out = Tensor(
             data=self.data[index],
             children=[self],
@@ -243,13 +247,26 @@ class Tensor:
             keepdims=keepdims,
             correction=correction,
         ) ** 0.5
-    
+
+    def detach(self):
+        out = Tensor(self.data, requires_grad=False, dtype=self.dtype)
+        out.data = self.data
+
+        return out
+
+    def clone(self):
+        return Tensor(self.data.copy(),
+                      children=[self],
+                      op='clone',
+                      requires_grad=self.requires_grad,
+                      dtype=self.dtype)
+
     def backward(self):
         nodes = topo_sort(self)
         nodes.reverse()
 
         # We are going to follow the pytorch convention that gradients
-        # at the leaf nodes accumulate across multiple backwards calls. 
+        # at the leaf nodes accumulate across multiple backwards calls.
         # We need to clear the intermediate grads as these are read in the
         # chain rule implementation and leaving them in there would produce
         # incorrect results.

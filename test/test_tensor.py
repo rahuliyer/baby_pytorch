@@ -821,3 +821,75 @@ def test_std_of_a_constant_column_is_finite():
 
     np.testing.assert_allclose(result.data, [0, 1])
     assert np.isfinite(result.data).all()
+
+
+def test_clone_preserves_values_shape_and_dtype():
+    tensor = Tensor([[1, 2], [3, 4]], dtype=np.int64)
+
+    cloned = tensor.clone()
+
+    np.testing.assert_array_equal(cloned.data, tensor.data)
+    assert cloned.shape == tensor.shape
+    assert cloned.data.dtype == tensor.data.dtype
+
+
+def test_clone_has_independent_storage():
+    tensor = Tensor([1, 2, 3])
+
+    cloned = tensor.clone()
+    cloned.data[0] = 99
+
+    assert not np.shares_memory(cloned.data, tensor.data)
+    np.testing.assert_array_equal(tensor.data, [1, 2, 3])
+
+
+def test_clone_preserves_autograd_metadata():
+    tensor = Tensor([1, 2, 3], requires_grad=True)
+
+    cloned = tensor.clone()
+
+    assert cloned.requires_grad
+    assert cloned.children == [tensor]
+    assert cloned.op == "clone"
+
+
+def test_detach_preserves_values_shape_and_dtype():
+    tensor = Tensor([[1, 2], [3, 4]], dtype=np.int64)
+
+    detached = tensor.detach()
+
+    np.testing.assert_array_equal(detached.data, tensor.data)
+    assert detached.shape == tensor.shape
+    assert detached.data.dtype == tensor.data.dtype
+
+
+def test_detach_removes_autograd_metadata():
+    source = Tensor([1, 2, 3], requires_grad=True)
+    tensor = source * 2
+
+    detached = tensor.detach()
+
+    assert not detached.requires_grad
+    assert detached.children == []
+    assert detached.op == ""
+
+
+def test_detach_shares_storage_with_the_source():
+    tensor = Tensor([1, 2, 3], requires_grad=True)
+
+    detached = tensor.detach()
+    detached.data[0] = 99
+
+    assert np.shares_memory(detached.data, tensor.data)
+    assert tensor.data[0] == 99
+
+
+def test_detach_then_clone_creates_an_untracked_independent_copy():
+    tensor = Tensor([1, 2, 3], requires_grad=True)
+
+    snapshot = tensor.detach().clone()
+    snapshot.data[0] = 99
+
+    assert not snapshot.requires_grad
+    assert not np.shares_memory(snapshot.data, tensor.data)
+    np.testing.assert_array_equal(tensor.data, [1, 2, 3])
