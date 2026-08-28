@@ -5,6 +5,7 @@ import numpy as np
 
 from baby_pytorch.functions import topo_sort
 from baby_pytorch.functions import calculate_child_gradients
+from baby_pytorch.no_grad import grad_enabled
 
 class Tensor:
     def __init__(self,
@@ -14,6 +15,11 @@ class Tensor:
                  requires_grad=False,
                  label='',
                  dtype=float):
+        if children is not None and not grad_enabled():
+            children = None
+            op = ''
+            requires_grad = False
+
         self.data = np.array(data, dtype=dtype)
         self.dtype=dtype
         self.children = [] if children is None else children
