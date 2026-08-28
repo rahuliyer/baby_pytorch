@@ -271,6 +271,9 @@ class Tensor:
         return self
 
     def backward(self):
+        if self.data.ndim != 0:
+            raise ValueError("backward() only supported on scalar types")
+
         nodes = topo_sort(self)
         nodes.reverse()
 
