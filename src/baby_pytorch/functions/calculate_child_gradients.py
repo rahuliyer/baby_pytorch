@@ -151,6 +151,27 @@ def calculate_child_gradients(tensor):
                 np.add.at(grad, tensor.ctx["index"], tensor.grad)
 
                 tensor.children[0].grad += grad
+        case 'sum':
+            if tensor.children[0].requires_grad:
+                grad = tensor.grad
+
+                if tensor.ctx["dim"] != None and tensor.ctx["keepdims"] == False:
+                    grad = np.expand_dims(grad, tensor.ctx["dim"])
+
+                grad = np.broadcast_to(grad, tensor.children[0].data.shape)
+
+                tensor.children[0].grad += grad
+        case 'mean':
+            if tensor.children[0].requires_grad:
+                grad = tensor.grad
+                if tensor.ctx["dim"] != None and tensor.ctx["keepdims"] == False:
+                    grad = np.expand_dims(grad, tensor.ctx["dim"])
+
+                grad = np.broadcast_to(grad, tensor.children[0].shape)
+
+                n = tensor.children[0].data.size // tensor.data.size
+
+                tensor.children[0].grad += (grad / n)
         case '':
             pass
         case _:

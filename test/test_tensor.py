@@ -583,3 +583,107 @@ def test_getitem_rejects_an_out_of_range_index():
 
     with pytest.raises(IndexError):
         tensor[3]
+
+
+def test_sum_reduces_all_elements_to_a_scalar():
+    tensor = Tensor([[1, 2, 3], [4, 5, 6]])
+
+    result = tensor.sum()
+
+    assert result.data == pytest.approx(21)
+    assert result.shape == ()
+
+
+def test_sum_reduces_along_a_dimension():
+    tensor = Tensor([[1, 2, 3], [4, 5, 6]])
+
+    result = tensor.sum(dim=0)
+
+    np.testing.assert_array_equal(result.data, [5, 7, 9])
+    assert result.shape == (3,)
+
+
+def test_sum_supports_multiple_and_negative_dimensions():
+    data = np.arange(24).reshape(2, 3, 4)
+    tensor = Tensor(data)
+
+    multiple = tensor.sum(dim=(0, 2))
+    negative = tensor.sum(dim=-1)
+
+    np.testing.assert_array_equal(multiple.data, data.sum(axis=(0, 2)))
+    np.testing.assert_array_equal(negative.data, data.sum(axis=-1))
+
+
+def test_sum_can_keep_reduced_dimensions():
+    tensor = Tensor(np.arange(6).reshape(2, 3))
+
+    result = tensor.sum(dim=1, keepdims=True)
+
+    np.testing.assert_array_equal(result.data, [[3], [12]])
+    assert result.shape == (2, 1)
+
+
+def test_sum_tracks_graph_metadata_and_requires_grad():
+    tensor = Tensor(np.arange(6), requires_grad=True)
+
+    result = tensor.sum()
+
+    assert result.op == "sum"
+    assert result.children == [tensor]
+    assert result.requires_grad
+
+
+def test_sum_of_an_untracked_tensor_does_not_require_grad():
+    assert not Tensor([1, 2, 3]).sum().requires_grad
+
+
+def test_mean_reduces_all_elements_to_a_scalar():
+    tensor = Tensor([[1, 2, 3], [4, 5, 6]])
+
+    result = tensor.mean()
+
+    assert result.data == pytest.approx(3.5)
+    assert result.shape == ()
+
+
+def test_mean_reduces_along_a_dimension():
+    tensor = Tensor([[1, 2, 3], [4, 5, 6]])
+
+    result = tensor.mean(dim=0)
+
+    np.testing.assert_array_equal(result.data, [2.5, 3.5, 4.5])
+    assert result.shape == (3,)
+
+
+def test_mean_supports_multiple_and_negative_dimensions():
+    data = np.arange(24).reshape(2, 3, 4)
+    tensor = Tensor(data)
+
+    multiple = tensor.mean(dim=(0, 2))
+    negative = tensor.mean(dim=-1)
+
+    np.testing.assert_allclose(multiple.data, data.mean(axis=(0, 2)))
+    np.testing.assert_allclose(negative.data, data.mean(axis=-1))
+
+
+def test_mean_can_keep_reduced_dimensions():
+    tensor = Tensor(np.arange(6).reshape(2, 3))
+
+    result = tensor.mean(dim=1, keepdims=True)
+
+    np.testing.assert_array_equal(result.data, [[1], [4]])
+    assert result.shape == (2, 1)
+
+
+def test_mean_tracks_graph_metadata_and_requires_grad():
+    tensor = Tensor(np.arange(6), requires_grad=True)
+
+    result = tensor.mean()
+
+    assert result.op == "mean"
+    assert result.children == [tensor]
+    assert result.requires_grad
+
+
+def test_mean_of_an_untracked_tensor_does_not_require_grad():
+    assert not Tensor([1, 2, 3]).mean().requires_grad

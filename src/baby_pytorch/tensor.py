@@ -197,7 +197,37 @@ class Tensor:
         out.ctx["index"] = index
 
         return out
-    
+
+    def sum(self, dim=None, keepdims=False):
+        out = Tensor(
+            data=self.data.sum(axis=dim, keepdims=keepdims),
+            children=[self],
+            op='sum',
+            requires_grad=self.requires_grad
+        )
+
+        out.ctx["keepdims"] = keepdims
+        out.ctx["dim"] = dim
+
+        return out
+
+    def mean(self, dim=None, keepdims=False):
+        out_data = self.data.sum(axis=dim, keepdims=keepdims)
+        n = self.data.size // out_data.size
+        out_data /= n
+
+        out = Tensor(
+            data=out_data,
+            children=[self],
+            op='mean',
+            requires_grad=self.requires_grad
+        )
+
+        out.ctx["dim"] = dim
+        out.ctx["keepdims"] = keepdims
+
+        return out
+
     def backward(self):
         nodes = topo_sort(self)
         nodes.reverse()

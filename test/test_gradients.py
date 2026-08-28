@@ -685,3 +685,88 @@ def test_repeated_getitem_backward_accumulates_leaf_gradients():
     result.backward()
 
     np.testing.assert_array_equal(tensor.grad, [0, 2, 2, 0])
+
+
+def test_sum_backward_over_all_elements():
+    tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
+
+    tensor.sum().backward()
+
+    np.testing.assert_array_equal(tensor.grad, np.ones((2, 3)))
+    assert tensor.grad.shape == tensor.shape
+
+
+def test_sum_backward_along_a_dimension():
+    tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
+
+    tensor.sum(dim=1).backward()
+
+    np.testing.assert_array_equal(tensor.grad, np.ones((2, 3)))
+
+
+def test_sum_backward_broadcasts_upstream_gradient():
+    tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
+    weights = Tensor([2, 3, 4])
+
+    (tensor.sum(dim=0) * weights).backward()
+
+    np.testing.assert_array_equal(tensor.grad, [[2, 3, 4], [2, 3, 4]])
+
+
+def test_sum_backward_supports_multiple_dimensions_and_keepdims():
+    tensor = Tensor(np.arange(24).reshape(2, 3, 4), requires_grad=True)
+    weights = Tensor([[[2], [3], [4]]])
+
+    (tensor.sum(dim=(0, 2), keepdims=True) * weights).backward()
+
+    expected = np.broadcast_to(np.array([2, 3, 4]).reshape(1, 3, 1), tensor.shape)
+    np.testing.assert_array_equal(tensor.grad, expected)
+
+
+def test_mean_backward_over_all_elements():
+    tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
+
+    tensor.mean().backward()
+
+    np.testing.assert_allclose(tensor.grad, np.full((2, 3), 1 / 6))
+
+
+def test_mean_backward_along_a_dimension():
+    tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
+
+    tensor.mean(dim=1).backward()
+
+    np.testing.assert_allclose(tensor.grad, np.full((2, 3), 1 / 3))
+
+
+def test_mean_backward_broadcasts_and_scales_upstream_gradient():
+    tensor = Tensor(np.arange(6).reshape(2, 3), requires_grad=True)
+    weights = Tensor([2, 4, 6])
+
+    (tensor.mean(dim=0) * weights).backward()
+
+    np.testing.assert_allclose(tensor.grad, [[1, 2, 3], [1, 2, 3]])
+
+
+def test_mean_backward_supports_multiple_dimensions():
+    tensor = Tensor(np.arange(24).reshape(2, 3, 4), requires_grad=True)
+    weights = Tensor([1, 2, 3])
+
+    (tensor.mean(dim=(0, 2)) * weights).backward()
+
+    expected = np.broadcast_to(
+        np.array([1, 2, 3]).reshape(1, 3, 1) / 8,
+        tensor.shape,
+    )
+    np.testing.assert_allclose(tensor.grad, expected)
+
+
+def test_repeated_sum_and_mean_backward_accumulate_leaf_gradients():
+    tensor = Tensor(np.arange(6), requires_grad=True)
+    summed = tensor.sum()
+    averaged = tensor.mean()
+
+    summed.backward()
+    averaged.backward()
+
+    np.testing.assert_allclose(tensor.grad, np.full(6, 1 + 1 / 6))
