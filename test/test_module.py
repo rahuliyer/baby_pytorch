@@ -43,6 +43,12 @@ def test_module_call_uses_training_mode_by_default():
     assert result.requires_grad
 
 
+def test_module_modules_yields_self_for_a_leaf():
+    module = Double()
+
+    assert list(module.modules()) == [module]
+
+
 def test_module_can_switch_between_training_and_evaluation_modes():
     module = Double()
 

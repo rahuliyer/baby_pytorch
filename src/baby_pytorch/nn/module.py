@@ -28,6 +28,11 @@ class Module(ABC):
         for value in vars(self).values():
             yield from self._modules_in(value)
 
+    def modules(self):
+        yield self
+        for child in self.children():
+            yield from child.modules()
+
     def _modules_in(self, value):
         if isinstance(value, Module):
             yield value

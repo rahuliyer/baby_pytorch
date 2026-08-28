@@ -3,11 +3,11 @@ from contextlib import contextmanager
 
 @contextmanager
 def evaluating(model):
-    prev_state = model.training
-
-    model.eval()
+    previous_modes = [(module, module.training) for module in model.modules()]
 
     try:
+        model.eval()
         yield
     finally:
-        model.train(prev_state)
+        for module, training in previous_modes:
+            module.training = training
