@@ -8,3 +8,4 @@ from .batch_norm import BatchNorm1d
 from .neuron import Neuron
 from .layer import Layer
 from .mlp import MLP
+from .init import calculate_gain, kaiming_normal_
