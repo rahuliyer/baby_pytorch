@@ -179,8 +179,9 @@ def test_batch_norm_evaluation_uses_frozen_running_statistics():
     tensor = Tensor([[3.0, 1.0], [-1.0, -5.0]], requires_grad=True)
     original_mean = batch_norm.running_mean.data.copy()
     original_var = batch_norm.running_var.data.copy()
+    batch_norm.eval()
 
-    result = batch_norm(tensor, training=False)
+    result = batch_norm(tensor)
 
     expected = (
         (tensor.data - original_mean) / np.sqrt(original_var + 0.01)
@@ -201,8 +202,9 @@ def test_batch_norm_evaluation_broadcasts_channel_state_over_3d_inputs():
     batch_norm.running_mean.data[:] = [1.0, -2.0, 0.5]
     batch_norm.running_var.data[:] = [4.0, 9.0, 0.25]
     tensor = Tensor(np.arange(24).reshape(2, 3, 4), requires_grad=True)
+    batch_norm.eval()
 
-    result = batch_norm(tensor, training=False)
+    result = batch_norm(tensor)
 
     expected = (
         (tensor.data - batch_norm.running_mean.data.reshape(1, 3, 1))

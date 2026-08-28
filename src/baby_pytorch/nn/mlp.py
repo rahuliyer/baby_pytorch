@@ -4,6 +4,7 @@ from baby_pytorch.nn.module import Module
 
 class MLP(Module):
     def __init__(self, input_size, hidden_layers, out_size, activation):
+        super().__init__()
         if isinstance(activation, Module) and activation.parameters():
             raise ValueError("MLP activations must be parameter-free.")
 
@@ -16,14 +17,14 @@ class MLP(Module):
 
     def forward(self, x, training):
         for layer in self.layers[:-1]:
-            x = layer(x, training=training)
+            x = layer(x)
             if isinstance(self.activation, Module):
-                x = self.activation(x, training=training)
+                x = self.activation(x)
             else:
                 x = self.activation(x)
 
         # The final layer produces logits, so it has no activation.
-        return self.layers[-1](x, training=training)
+        return self.layers[-1](x)
 
     def parameters(self):
         return [

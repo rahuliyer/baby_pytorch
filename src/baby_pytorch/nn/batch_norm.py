@@ -6,6 +6,7 @@ from baby_pytorch.tensor import Tensor
 
 class BatchNorm1d(Module):
     def __init__(self, fan_in, eps=1e-5, momentum=0.01):
+        super().__init__()
         self.fan_in = fan_in
         self.eps = eps
         self.momentum = momentum

@@ -6,6 +6,7 @@ from baby_pytorch.tensor import Tensor
 
 class Embedding(Module):
     def __init__(self, in_len, num_dims):
+        super().__init__()
         self.in_len = in_len
         self.num_dims = num_dims
         self.embedding = Tensor(

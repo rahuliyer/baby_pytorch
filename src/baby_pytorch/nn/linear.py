@@ -6,6 +6,7 @@ from baby_pytorch.tensor import Tensor
 
 class Linear(Module):
     def __init__(self, fan_in, fan_out, bias=True):
+        super().__init__()
         self.weights = Tensor(
             np.random.randn(fan_in, fan_out),
             requires_grad=True,

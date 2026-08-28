@@ -91,8 +91,9 @@ def test_mlp_backward_populates_shaped_parameter_gradients():
 def test_mlp_inference_returns_a_detached_tensor():
     mlp = MLP(2, [3], 1, Tanh())
     inputs = Tensor([[0.2, -0.4], [1.0, 0.5]], requires_grad=True)
+    mlp.eval()
 
-    result = mlp(inputs, training=False)
+    result = mlp(inputs)
 
     assert result.shape == (2, 1)
     assert not result.requires_grad
@@ -101,6 +102,23 @@ def test_mlp_inference_returns_a_detached_tensor():
     np.testing.assert_array_equal(inputs.grad, np.zeros_like(inputs.data))
     for parameter in mlp.parameters():
         np.testing.assert_array_equal(parameter.grad, np.zeros(parameter.shape))
+
+
+def test_mlp_mode_changes_propagate_to_child_modules():
+    activation = Tanh()
+    mlp = MLP(2, [3], 1, activation)
+
+    mlp.eval()
+
+    assert mlp.training is False
+    assert all(layer.training is False for layer in mlp.layers)
+    assert activation.training is False
+
+    mlp.train()
+
+    assert mlp.training is True
+    assert all(layer.training is True for layer in mlp.layers)
+    assert activation.training is True
 
 
 def test_mlp_save_and_load_use_independent_tensor_leaves():

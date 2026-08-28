@@ -40,8 +40,10 @@ def test_tanh_layer_values_and_gradients_match_pytorch():
 
 def test_tanh_layer_detaches_its_output_during_inference():
     tensor = Tensor([[-1.0, 0.0, 1.0]], requires_grad=True)
+    layer = Tanh()
+    layer.eval()
 
-    result = Tanh()(tensor, training=False)
+    result = layer(tensor)
 
     np.testing.assert_allclose(result.data, np.tanh(tensor.data))
     assert not result.requires_grad

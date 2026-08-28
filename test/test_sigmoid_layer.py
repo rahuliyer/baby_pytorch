@@ -39,8 +39,10 @@ def test_sigmoid_layer_values_and_gradients_match_pytorch():
 
 def test_sigmoid_layer_detaches_its_output_during_inference():
     tensor = Tensor([[-1.0, 0.0, 1.0]], requires_grad=True)
+    layer = Sigmoid()
+    layer.eval()
 
-    result = Sigmoid()(tensor, training=False)
+    result = layer(tensor)
 
     expected = 1.0 / (1.0 + np.exp(-tensor.data))
     np.testing.assert_allclose(result.data, expected)

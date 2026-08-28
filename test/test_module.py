@@ -7,6 +7,7 @@ from baby_pytorch.tensor import Tensor
 
 class Double(Module):
     def __init__(self):
+        super().__init__()
         self.last_training_value = None
 
     def forward(self, x, training):
@@ -42,11 +43,48 @@ def test_module_call_uses_training_mode_by_default():
     assert result.requires_grad
 
 
-def test_module_call_detaches_results_during_inference():
+def test_module_can_switch_between_training_and_evaluation_modes():
+    module = Double()
+
+    assert module.training is True
+    assert module.eval() is module
+    assert module.training is False
+    assert module.train() is module
+    assert module.training is True
+
+
+def test_module_default_call_uses_its_current_mode():
+    module = Double()
+    tensor = Tensor([1, 2, 3], requires_grad=True)
+    module.eval()
+
+    result = module(tensor)
+
+    assert module.last_training_value is False
+    assert not result.requires_grad
+
+
+def test_module_call_does_not_accept_a_training_override():
     module = Double()
     tensor = Tensor([1, 2, 3], requires_grad=True)
 
-    result = module(tensor, training=False)
+    with pytest.raises(TypeError, match="unexpected keyword argument 'training'"):
+        module(tensor, training=False)
+
+
+def test_train_rejects_non_boolean_modes():
+    module = Double()
+
+    with pytest.raises(ValueError, match="must be a boolean"):
+        module.train(1)
+
+
+def test_module_call_detaches_results_during_inference():
+    module = Double()
+    tensor = Tensor([1, 2, 3], requires_grad=True)
+    module.eval()
+
+    result = module(tensor)
 
     np.testing.assert_array_equal(result.data, [2, 4, 6])
     assert module.last_training_value is False
