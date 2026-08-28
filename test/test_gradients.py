@@ -25,6 +25,15 @@ def test_backward_accepts_scalar_outputs():
     assert tensor.grad == pytest.approx(2.0)
 
 
+@pytest.mark.parametrize("shape", [(1,), (1, 1), (1, 1, 1)])
+def test_backward_accepts_one_element_outputs_with_dimensions(shape):
+    tensor = Tensor(np.full(shape, 3.0), requires_grad=True)
+
+    (tensor * 2).backward()
+
+    np.testing.assert_array_equal(tensor.grad, np.full(shape, 2.0))
+
+
 def test_chain_rule_for_all_binary_operations():
     x = Tensor(2.0, requires_grad=True)
     y = 3 * ((x + 1) * (x - 4))
