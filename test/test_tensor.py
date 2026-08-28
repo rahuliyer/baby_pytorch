@@ -689,6 +689,24 @@ def test_mean_of_an_untracked_tensor_does_not_require_grad():
     assert not Tensor([1, 2, 3]).mean().requires_grad
 
 
+@pytest.mark.parametrize("reduction", ["sum", "mean"])
+@pytest.mark.parametrize("dim", [None, 0, 1])
+@pytest.mark.parametrize("keepdims", [False, True])
+def test_sum_and_mean_dimension_and_keepdims_combinations(
+    reduction,
+    dim,
+    keepdims,
+):
+    data = np.arange(1, 13).reshape(3, 4)
+    tensor = Tensor(data)
+
+    result = getattr(tensor, reduction)(dim=dim, keepdims=keepdims)
+    expected = getattr(data, reduction)(axis=dim, keepdims=keepdims)
+
+    np.testing.assert_allclose(result.data, expected)
+    assert result.shape == expected.shape
+
+
 def test_var_reduces_all_elements_to_a_scalar():
     tensor = Tensor([1, 2, 3, 4])
 
@@ -779,3 +797,21 @@ def test_std_propagates_requires_grad():
 
     assert tracked.std().requires_grad
     assert not plain.std().requires_grad
+
+
+def test_var_and_std_use_population_statistics():
+    tensor = Tensor([1, 2, 3, 4])
+
+    assert tensor.var().data == pytest.approx(np.var([1, 2, 3, 4], ddof=0))
+    assert tensor.std().data == pytest.approx(np.std([1, 2, 3, 4], ddof=0))
+    assert tensor.var().data != pytest.approx(np.var([1, 2, 3, 4], ddof=1))
+    assert tensor.std().data != pytest.approx(np.std([1, 2, 3, 4], ddof=1))
+
+
+def test_std_of_a_constant_column_is_finite():
+    tensor = Tensor([[5, 1], [5, 2], [5, 3]])
+
+    result = tensor.std(dim=0)
+
+    np.testing.assert_allclose(result.data, [0, np.sqrt(2 / 3)])
+    assert np.isfinite(result.data).all()

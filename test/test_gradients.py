@@ -772,6 +772,24 @@ def test_repeated_sum_and_mean_backward_accumulate_leaf_gradients():
     np.testing.assert_allclose(tensor.grad, np.full(6, 1 + 1 / 6))
 
 
+@pytest.mark.parametrize("reduction", ["sum", "mean"])
+@pytest.mark.parametrize("dim", [None, 0, 1])
+@pytest.mark.parametrize("keepdims", [False, True])
+def test_sum_and_mean_backward_for_dimension_and_keepdims_combinations(
+    reduction,
+    dim,
+    keepdims,
+):
+    data = np.arange(1, 13).reshape(3, 4)
+    tensor = Tensor(data, requires_grad=True)
+
+    getattr(tensor, reduction)(dim=dim, keepdims=keepdims).backward()
+
+    reduced_element_count = data.size if dim is None else data.shape[dim]
+    scale = 1 if reduction == "sum" else 1 / reduced_element_count
+    np.testing.assert_allclose(tensor.grad, np.full(data.shape, scale))
+
+
 def test_var_backward_over_all_elements():
     tensor = Tensor([1, 2, 3, 4], requires_grad=True)
 
@@ -842,3 +860,4 @@ def test_std_backward_broadcasts_upstream_gradient():
         tensor.grad,
         [[-1, -1.5, -2], [1, 1.5, 2]],
     )
+

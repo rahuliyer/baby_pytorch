@@ -67,3 +67,45 @@ def test_incompatible_shapes_raise_a_value_error():
     with pytest.raises(ValueError):
         Tensor(np.zeros((2, 3))) + Tensor(np.zeros((2, 2)))
 
+
+@pytest.mark.parametrize(
+    "other_data",
+    [
+        pytest.param(np.array([1, 2, 1, 2]), id="row"),
+        pytest.param(np.array([[1, 2, 1, 2]]), id="singleton-row"),
+        pytest.param(np.array([[1], [2], [3]]), id="column"),
+        pytest.param(np.array(2.0), id="scalar"),
+    ],
+)
+@pytest.mark.parametrize(
+    ("tensor_operation", "numpy_operation"),
+    [
+        pytest.param(lambda left, right: left + right, np.add, id="add"),
+        pytest.param(lambda left, right: left - right, np.subtract, id="subtract"),
+        pytest.param(lambda left, right: left * right, np.multiply, id="multiply"),
+        pytest.param(lambda left, right: left / right, np.divide, id="divide"),
+        pytest.param(lambda left, right: left**right, np.power, id="power"),
+    ],
+)
+def test_elementwise_operations_broadcast_either_operand(
+    other_data,
+    tensor_operation,
+    numpy_operation,
+):
+    matrix_data = np.arange(1, 13).reshape(3, 4)
+    matrix = Tensor(matrix_data)
+    other = Tensor(other_data)
+
+    forward = tensor_operation(matrix, other)
+    reverse = tensor_operation(other, matrix)
+
+    np.testing.assert_allclose(
+        forward.data,
+        numpy_operation(matrix_data, other_data),
+    )
+    np.testing.assert_allclose(
+        reverse.data,
+        numpy_operation(other_data, matrix_data),
+    )
+    assert forward.shape == (3, 4)
+    assert reverse.shape == (3, 4)
