@@ -667,6 +667,16 @@ def test_getitem_backward_accumulates_repeated_fancy_indices():
     np.testing.assert_array_equal(tensor.grad, [3, 0, 3, 0])
 
 
+def test_getitem_backward_accumulates_repeated_tensor_indices():
+    tensor = Tensor([10, 20, 30, 40], requires_grad=True)
+    index = Tensor([0, 0, 2], dtype=np.int64)
+    weights = Tensor([1, 2, 3])
+
+    (tensor[index] * weights).backward()
+
+    np.testing.assert_array_equal(tensor.grad, [3, 0, 3, 0])
+
+
 def test_backward_through_multiple_getitem_operations():
     tensor = Tensor(np.arange(10), requires_grad=True)
     weights = Tensor([2, 3])
@@ -923,3 +933,14 @@ def test_detach_disconnects_a_derived_tensor_from_its_source():
     (detached ** 2).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, [0, 0, 0])
+
+
+def test_detach_clone_and_requires_grad_creates_a_new_trainable_leaf():
+    source = Tensor([1, 2, 3], requires_grad=True)
+    parameter = source.detach().clone().requires_grad_()
+
+    (parameter * 3).sum().backward()
+
+    np.testing.assert_array_equal(parameter.grad, [3, 3, 3])
+    np.testing.assert_array_equal(source.grad, [0, 0, 0])
+    assert parameter.children == []

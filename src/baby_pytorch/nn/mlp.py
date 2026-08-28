@@ -1,27 +1,66 @@
-from baby_pytorch.nn import Layer
+from baby_pytorch.nn.linear import Linear
+from baby_pytorch.nn.module import Module
 
-class MLP:
+
+class MLP(Module):
     def __init__(self, input_size, hidden_layers, out_size, activation):
-        self.layers = []
+        if isinstance(activation, Module) and activation.parameters():
+            raise ValueError("MLP activations must be parameter-free.")
+
+        layer_sizes = [input_size, *hidden_layers, out_size]
+        self.layers = [
+            Linear(fan_in, fan_out)
+            for fan_in, fan_out in zip(layer_sizes, layer_sizes[1:])
+        ]
         self.activation = activation
 
-        in_size = input_size
-        for i in range(len(hidden_layers)):
-            self.layers.append(Layer(in_size, hidden_layers[i]))
-            in_size = hidden_layers[i]
+    def forward(self, x, training):
+        for layer in self.layers[:-1]:
+            x = layer(x, training=training)
+            if isinstance(self.activation, Module):
+                x = self.activation(x, training=training)
+            else:
+                x = self.activation(x)
 
-        self.layers.append(Layer(in_size, out_size))
-
-    def __call__(self, input):
-        for i in range(len(self.layers) - 1):
-            input = [self.activation(output) for output in self.layers[i](input)]
-
-        # No activation for the output layer
-        return self.layers[-1](input)
+        # The final layer produces logits, so it has no activation.
+        return self.layers[-1](x, training=training)
 
     def parameters(self):
-        parameters = []
-        for layer in self.layers:
-            parameters += layer.parameters()
+        return [
+            parameter
+            for layer in self.layers
+            for parameter in layer.parameters()
+        ]
 
-        return parameters
+    def save_weights(self):
+        return [
+            weight
+            for layer in self.layers
+            for weight in layer.save_weights()
+        ]
+
+    def load_weights(self, weights):
+        expected_count = sum(
+            len(layer.save_weights()) for layer in self.layers
+        )
+        if len(weights) != expected_count:
+            raise ValueError(
+                f"Expected {expected_count} weights, received {len(weights)}."
+            )
+
+        offset = 0
+        for layer in self.layers:
+            weight_count = len(layer.save_weights())
+            layer.load_weights(weights[offset:offset + weight_count])
+            offset += weight_count
+
+    def __repr__(self):
+        activation_name = (
+            repr(self.activation)
+            if isinstance(self.activation, Module)
+            else getattr(self.activation, "__name__", repr(self.activation))
+        )
+        layers = "\n".join(
+            f"  ({index}): {layer!r}" for index, layer in enumerate(self.layers)
+        )
+        return f"{self.__class__.__name__}(\n{layers}\n  activation: {activation_name}\n)"

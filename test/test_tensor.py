@@ -561,6 +561,16 @@ def test_getitem_supports_fancy_integer_indices():
     np.testing.assert_array_equal(result.data, [40, 20, 20])
 
 
+def test_getitem_supports_an_integer_tensor_index():
+    tensor = Tensor(np.arange(15).reshape(5, 3))
+    index = Tensor([3, 1, 1], dtype=np.int64)
+
+    result = tensor[index]
+
+    np.testing.assert_array_equal(result.data, tensor.data[[3, 1, 1]])
+    assert result.shape == (3, 3)
+
+
 def test_getitem_tracks_graph_metadata_and_requires_grad():
     tensor = Tensor(np.arange(6), requires_grad=True)
 
@@ -853,6 +863,17 @@ def test_clone_preserves_autograd_metadata():
     assert cloned.op == "clone"
 
 
+def test_clone_of_an_untracked_tensor_is_an_independent_leaf():
+    tensor = Tensor([1, 2, 3])
+
+    cloned = tensor.clone()
+
+    assert not cloned.requires_grad
+    assert cloned.children == []
+    assert cloned.op == ""
+    assert not np.shares_memory(cloned.data, tensor.data)
+
+
 def test_detach_preserves_values_shape_and_dtype():
     tensor = Tensor([[1, 2], [3, 4]], dtype=np.int64)
 
@@ -893,3 +914,21 @@ def test_detach_then_clone_creates_an_untracked_independent_copy():
     assert not snapshot.requires_grad
     assert not np.shares_memory(snapshot.data, tensor.data)
     np.testing.assert_array_equal(tensor.data, [1, 2, 3])
+
+
+def test_requires_grad_enables_tracking_in_place_and_is_chainable():
+    tensor = Tensor([1, 2, 3])
+
+    result = tensor.requires_grad_()
+
+    assert result is tensor
+    assert tensor.requires_grad
+
+
+def test_requires_grad_can_disable_tracking():
+    tensor = Tensor([1, 2, 3], requires_grad=True)
+
+    result = tensor.requires_grad_(False)
+
+    assert result is tensor
+    assert not tensor.requires_grad

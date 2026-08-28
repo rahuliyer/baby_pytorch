@@ -76,7 +76,9 @@ def calculate_child_gradients(tensor):
                 )
         case 'relu':
             if tensor.children[0].requires_grad:
-                tensor.children[0].grad += tensor.grad if tensor.data > 0 else 0
+                tensor.children[0].grad += (
+                    tensor.grad * (tensor.children[0].data > 0)
+                )
         case 'matmul':
             c1, c2 = tensor.children
             if not c1.requires_grad and not c2.requires_grad:

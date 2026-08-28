@@ -1,6 +1,7 @@
 from baby_pytorch.tensor import Tensor
 from baby_pytorch.activation_functions import tanh, sigmoid, relu
 
+import numpy as np
 import pytest
 
 def test_tanh():
@@ -12,6 +13,15 @@ def test_tanh():
     assert len(y.children) == 1
     assert x in y.children
     assert y.op == 'tanh'
+
+
+def test_tanh_is_elementwise_for_tensor_arrays():
+    tensor = Tensor([[-2.0, -0.5], [0.0, 1.5]])
+
+    result = tanh(tensor)
+
+    np.testing.assert_allclose(result.data, np.tanh(tensor.data))
+    assert result.shape == tensor.shape
 
 def test_sigmoid():
     x = Tensor(2)
@@ -26,6 +36,16 @@ def test_sigmoid():
 def test_sigmoid_negative_and_zero():
     assert sigmoid(Tensor(0.0)).data == pytest.approx(0.5)
     assert sigmoid(Tensor(-2.0)).data == pytest.approx(0.11920292202211755)
+
+
+def test_sigmoid_is_elementwise_and_numerically_stable_for_tensor_arrays():
+    tensor = Tensor([[-1000.0, -0.5], [0.0, 1000.0]])
+
+    result = sigmoid(tensor)
+
+    expected = np.array([[0.0, 0.3775406688], [0.5, 1.0]])
+    np.testing.assert_allclose(result.data, expected)
+    assert result.shape == tensor.shape
 
 def test_relu():
     x = Tensor(2)
@@ -44,3 +64,12 @@ def test_relu_at_zero_and_negative():
     y.backward()
 
     assert x.grad == 0
+
+
+def test_relu_is_elementwise_for_tensor_arrays():
+    tensor = Tensor([[-2.0, -0.5], [0.0, 1.5]])
+
+    result = relu(tensor)
+
+    np.testing.assert_array_equal(result.data, [[0.0, 0.0], [0.0, 1.5]])
+    assert result.shape == tensor.shape

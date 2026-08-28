@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
 
+import numpy as np
+
+
 class Optimizer(ABC):
     def __init__(self, parameters, lr=0.01):
         self.parameters = parameters
@@ -11,4 +14,4 @@ class Optimizer(ABC):
 
     def zero_grad(self):
         for param in self.parameters:
-            param.grad = 0.0
+            param.grad = np.zeros(param.shape)
