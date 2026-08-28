@@ -10,4 +10,4 @@ def evaluating(model):
         yield
     finally:
         for module, training in previous_modes:
-            module.training = training
+            module.train(training)

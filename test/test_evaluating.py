@@ -62,6 +62,32 @@ class Container(Module):
         return "Container"
 
 
+class Tracking(Module):
+    def __init__(self):
+        super().__init__()
+        self.synced_mode = True
+
+    def train(self, mode=True):
+        result = super().train(mode)
+        self.synced_mode = mode
+        return result
+
+    def forward(self, x, training):
+        return x
+
+    def parameters(self):
+        return []
+
+    def save_weights(self):
+        return []
+
+    def load_weights(self, weights):
+        return None
+
+    def __repr__(self):
+        return "Tracking"
+
+
 def test_evaluating_temporarily_switches_model_to_evaluation_mode():
     model = Model()
     tensor = Tensor([1, 2, 3], requires_grad=True)
@@ -173,3 +199,28 @@ def test_evaluating_restores_each_descendant_mode_individually():
 
     np.testing.assert_array_equal(frozen.running_mean.data, original_mean.data)
     np.testing.assert_array_equal(frozen.running_var.data, original_var.data)
+
+
+def test_evaluating_restores_mode_through_train():
+    model = Tracking()
+
+    with evaluating(model):
+        assert model.training is False
+        assert model.synced_mode is False
+
+    assert model.training is True
+    assert model.synced_mode is True
+
+
+def test_evaluating_restores_overridden_train_on_mixed_children():
+    frozen = Tracking()
+    frozen.eval()
+    model = Container(frozen)
+
+    with evaluating(model):
+        assert frozen.training is False
+        assert frozen.synced_mode is False
+
+    assert model.training is True
+    assert frozen.training is False
+    assert frozen.synced_mode is False
