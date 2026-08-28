@@ -255,11 +255,18 @@ class Tensor:
         return out
 
     def clone(self):
+        if not self.requires_grad:
+            return Tensor(self.data.copy(), dtype=self.dtype)
+
         return Tensor(self.data.copy(),
                       children=[self],
                       op='clone',
                       requires_grad=self.requires_grad,
                       dtype=self.dtype)
+
+    def requires_grad_(self, requires_grad=True):
+        self.requires_grad = requires_grad
+        return self
 
     def backward(self):
         nodes = topo_sort(self)

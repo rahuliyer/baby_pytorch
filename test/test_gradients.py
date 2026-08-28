@@ -933,3 +933,14 @@ def test_detach_disconnects_a_derived_tensor_from_its_source():
     (detached ** 2).sum().backward()
 
     np.testing.assert_array_equal(tensor.grad, [0, 0, 0])
+
+
+def test_detach_clone_and_requires_grad_creates_a_new_trainable_leaf():
+    source = Tensor([1, 2, 3], requires_grad=True)
+    parameter = source.detach().clone().requires_grad_()
+
+    (parameter * 3).sum().backward()
+
+    np.testing.assert_array_equal(parameter.grad, [3, 3, 3])
+    np.testing.assert_array_equal(source.grad, [0, 0, 0])
+    assert parameter.children == []
