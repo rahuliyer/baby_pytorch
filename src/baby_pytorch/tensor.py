@@ -255,6 +255,8 @@ class Tensor:
         return out
 
     def clone(self):
+        # An untracked clone stays a leaf. This is especially important for
+        # detach().clone() snapshots, which must not retain graph edges.
         if not self.requires_grad:
             return Tensor(self.data.copy(), dtype=self.dtype)
 

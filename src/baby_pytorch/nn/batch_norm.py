@@ -16,26 +16,43 @@ class BatchNorm1d(Module):
         self.running_var = Tensor(np.ones(fan_in))
 
     def forward(self, x, training):
+        if len(x.shape) not in (2, 3):
+            raise ValueError("BatchNorm1d expects a 2-D or 3-D input.")
+        if x.shape[1] != self.fan_in:
+            raise ValueError(
+                f"Expected {self.fan_in} channels, received {x.shape[1]}."
+            )
+
+        reduction_dims = 0 if len(x.shape) == 2 else (0, 2)
+        broadcast_shape = (
+            (1, self.fan_in)
+            if len(x.shape) == 2
+            else (1, self.fan_in, 1)
+        )
+
         if training:
-            mean = x.mean(dim=0)
-            var = x.var(dim=0)
+            mean = x.mean(dim=reduction_dims, keepdims=True)
+            var = x.var(dim=reduction_dims, keepdims=True)
             normalized = (x - mean) / (var + self.eps) ** 0.5
 
             self.running_mean = (
                 self.running_mean * (1 - self.momentum)
-                + mean.detach() * self.momentum
+                + mean.reshape(self.fan_in).detach() * self.momentum
             ).detach()
             self.running_var = (
                 self.running_var * (1 - self.momentum)
-                + var.detach() * self.momentum
+                + var.reshape(self.fan_in).detach() * self.momentum
             ).detach()
         else:
             normalized = (
-                (x - self.running_mean)
-                / (self.running_var + self.eps) ** 0.5
+                (x - self.running_mean.reshape(broadcast_shape))
+                / (self.running_var.reshape(broadcast_shape) + self.eps) ** 0.5
             )
 
-        return normalized * self.gamma + self.beta
+        return (
+            normalized * self.gamma.reshape(broadcast_shape)
+            + self.beta.reshape(broadcast_shape)
+        )
 
     def parameters(self):
         return [self.gamma, self.beta]
@@ -52,10 +69,24 @@ class BatchNorm1d(Module):
         return parameters + running_statistics
 
     def load_weights(self, weights):
-        self.gamma = weights[0].detach().clone().requires_grad_()
-        self.beta = weights[1].detach().clone().requires_grad_()
-        self.running_mean = weights[2].detach().clone()
-        self.running_var = weights[3].detach().clone()
+        state = [
+            self.gamma,
+            self.beta,
+            self.running_mean,
+            self.running_var,
+        ]
+        if len(weights) != len(state):
+            raise ValueError(
+                f"Expected {len(state)} weights, received {len(weights)}."
+            )
+
+        for tensor, weight in zip(state, weights):
+            if tensor.shape != weight.shape:
+                raise ValueError(
+                    f"Expected weight shape {tensor.shape}, "
+                    f"received {weight.shape}."
+                )
+            tensor.data[...] = weight.data
 
     def __repr__(self):
         return (

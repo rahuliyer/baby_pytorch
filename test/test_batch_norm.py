@@ -85,6 +85,70 @@ def test_batch_norm_training_values_and_gradients_match_notebook_formula():
     np.testing.assert_allclose(batch_norm.beta.grad, torch_beta.grad.numpy())
 
 
+def test_batch_norm_reduces_non_channel_axes_for_3d_inputs():
+    input_data = np.array(
+        [
+            [
+                [0.2, -0.5, 1.0, 0.7],
+                [1.2, 0.3, -0.7, 0.1],
+                [-0.4, 1.5, 0.2, -0.8],
+            ],
+            [
+                [0.8, -1.0, 1.7, 0.4],
+                [-0.2, 0.6, 0.9, -1.1],
+                [1.1, -0.3, 0.5, 1.4],
+            ],
+        ],
+    )
+    coefficient_data = np.arange(24).reshape(2, 3, 4) / 10
+    gamma_data = np.array([1.2, -0.7, 0.5])
+    beta_data = np.array([0.1, 0.3, -0.2])
+    batch_norm = BatchNorm1d(3, eps=1e-5, momentum=0.2)
+    batch_norm.gamma.data[:] = gamma_data
+    batch_norm.beta.data[:] = beta_data
+    tensor = Tensor(input_data, requires_grad=True)
+
+    baby_result = batch_norm(tensor)
+    (baby_result * Tensor(coefficient_data)).sum().backward()
+
+    torch_input = torch.tensor(
+        input_data,
+        dtype=torch.float64,
+        requires_grad=True,
+    )
+    torch_gamma = torch.tensor(
+        gamma_data,
+        dtype=torch.float64,
+        requires_grad=True,
+    )
+    torch_beta = torch.tensor(
+        beta_data,
+        dtype=torch.float64,
+        requires_grad=True,
+    )
+    torch_mean = torch_input.mean(dim=(0, 2), keepdim=True)
+    torch_var = torch_input.var(dim=(0, 2), keepdim=True)
+    torch_result = (
+        (torch_input - torch_mean) / (torch_var + 1e-5) ** 0.5
+        * torch_gamma.reshape(1, 3, 1)
+        + torch_beta.reshape(1, 3, 1)
+    )
+    (torch_result * torch.tensor(coefficient_data)).sum().backward()
+
+    np.testing.assert_allclose(baby_result.data, torch_result.detach().numpy())
+    np.testing.assert_allclose(tensor.grad, torch_input.grad.numpy())
+    np.testing.assert_allclose(batch_norm.gamma.grad, torch_gamma.grad.numpy())
+    np.testing.assert_allclose(batch_norm.beta.grad, torch_beta.grad.numpy())
+    expected_running_mean = (
+        0.8 * np.zeros(3) + 0.2 * input_data.mean(axis=(0, 2))
+    )
+    expected_running_var = (
+        0.8 * np.ones(3) + 0.2 * input_data.var(axis=(0, 2), ddof=1)
+    )
+    np.testing.assert_allclose(batch_norm.running_mean.data, expected_running_mean)
+    np.testing.assert_allclose(batch_norm.running_var.data, expected_running_var)
+
+
 def test_batch_norm_updates_detached_running_statistics():
     input_data = np.array(
         [[1.0, 3.0], [2.0, 7.0], [6.0, 11.0], [3.0, 15.0]],
@@ -130,6 +194,28 @@ def test_batch_norm_evaluation_uses_frozen_running_statistics():
     assert result.children == []
 
 
+def test_batch_norm_evaluation_broadcasts_channel_state_over_3d_inputs():
+    batch_norm = BatchNorm1d(3, eps=0.01)
+    batch_norm.gamma.data[:] = [2.0, 0.5, -1.0]
+    batch_norm.beta.data[:] = [-1.0, 3.0, 0.25]
+    batch_norm.running_mean.data[:] = [1.0, -2.0, 0.5]
+    batch_norm.running_var.data[:] = [4.0, 9.0, 0.25]
+    tensor = Tensor(np.arange(24).reshape(2, 3, 4), requires_grad=True)
+
+    result = batch_norm(tensor, training=False)
+
+    expected = (
+        (tensor.data - batch_norm.running_mean.data.reshape(1, 3, 1))
+        / np.sqrt(batch_norm.running_var.data.reshape(1, 3, 1) + 0.01)
+        * batch_norm.gamma.data.reshape(1, 3, 1)
+        + batch_norm.beta.data.reshape(1, 3, 1)
+    )
+    np.testing.assert_allclose(result.data, expected)
+    assert result.shape == tensor.shape
+    assert not result.requires_grad
+    assert result.children == []
+
+
 def test_batch_norm_save_and_load_copy_parameters_and_running_statistics():
     batch_norm = BatchNorm1d(2)
     batch_norm.gamma.data[:] = [1.5, 0.5]
@@ -148,6 +234,12 @@ def test_batch_norm_save_and_load_copy_parameters_and_running_statistics():
     assert saved[2].data[0] == 3.0
 
     restored = BatchNorm1d(2)
+    original_state = [
+        restored.gamma,
+        restored.beta,
+        restored.running_mean,
+        restored.running_var,
+    ]
     restored.load_weights(saved)
 
     for actual, expected in zip(restored.save_weights(), saved):
@@ -157,3 +249,13 @@ def test_batch_norm_save_and_load_copy_parameters_and_running_statistics():
     assert restored.beta.requires_grad
     assert not restored.running_mean.requires_grad
     assert not restored.running_var.requires_grad
+    loaded_state = [
+        restored.gamma,
+        restored.beta,
+        restored.running_mean,
+        restored.running_var,
+    ]
+    assert all(
+        loaded is original
+        for loaded, original in zip(loaded_state, original_state)
+    )

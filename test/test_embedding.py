@@ -74,9 +74,11 @@ def test_embedding_save_and_load_use_independent_tensor_leaves():
     assert saved[0].data[0, 0] == 1
 
     restored = Embedding(3, 2)
+    original_parameter = restored.embedding
     restored.load_weights(saved)
 
     np.testing.assert_array_equal(restored.embedding.data, saved[0].data)
     assert restored.embedding.requires_grad
     assert restored.embedding.children == []
     assert not np.shares_memory(restored.embedding.data, saved[0].data)
+    assert restored.embedding is original_parameter

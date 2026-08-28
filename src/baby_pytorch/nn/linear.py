@@ -32,12 +32,19 @@ class Linear(Module):
         return [parameter.detach().clone() for parameter in self.parameters()]
 
     def load_weights(self, weights):
-        self.weights = weights[0].detach().clone().requires_grad_()
-        self.bias = (
-            weights[1].detach().clone().requires_grad_()
-            if len(weights) > 1
-            else None
-        )
+        parameters = self.parameters()
+        if len(weights) != len(parameters):
+            raise ValueError(
+                f"Expected {len(parameters)} weights, received {len(weights)}."
+            )
+
+        for parameter, weight in zip(parameters, weights):
+            if parameter.shape != weight.shape:
+                raise ValueError(
+                    f"Expected weight shape {parameter.shape}, "
+                    f"received {weight.shape}."
+                )
+            parameter.data[...] = weight.data
 
     def __repr__(self):
         bias_shape = None if self.bias is None else self.bias.shape

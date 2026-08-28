@@ -23,7 +23,14 @@ class Embedding(Module):
         return [parameter.detach().clone() for parameter in self.parameters()]
 
     def load_weights(self, weights):
-        self.embedding = weights[0].detach().clone().requires_grad_()
+        if len(weights) != 1:
+            raise ValueError(f"Expected 1 weight, received {len(weights)}.")
+        if self.embedding.shape != weights[0].shape:
+            raise ValueError(
+                f"Expected weight shape {self.embedding.shape}, "
+                f"received {weights[0].shape}."
+            )
+        self.embedding.data[...] = weights[0].data
 
     def __repr__(self):
         return f"{self.__class__.__name__}: shape({self.embedding.shape})"

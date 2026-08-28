@@ -1,7 +1,9 @@
 import numpy as np
+import pytest
 import torch
 
 from baby_pytorch.nn import Linear
+from baby_pytorch.optim import SGD
 from baby_pytorch.tensor import Tensor
 
 
@@ -90,6 +92,8 @@ def test_linear_save_and_load_use_independent_tensor_leaves():
     assert saved[1].data[0] == 1
 
     restored = Linear(2, 3)
+    optimizer = SGD(restored.parameters(), lr=0.1)
+    original_parameters = restored.parameters()
     restored.load_weights(saved)
 
     np.testing.assert_array_equal(restored.weights.data, saved[0].data)
@@ -98,13 +102,35 @@ def test_linear_save_and_load_use_independent_tensor_leaves():
     assert all(parameter.children == [] for parameter in restored.parameters())
     assert not np.shares_memory(restored.weights.data, saved[0].data)
     assert not np.shares_memory(restored.bias.data, saved[1].data)
+    assert all(
+        loaded is original
+        for loaded, original in zip(restored.parameters(), original_parameters)
+    )
+    assert all(
+        optimized is loaded
+        for optimized, loaded in zip(optimizer.parameters, restored.parameters())
+    )
+
+    optimizer.zero_grad()
+    restored(Tensor([[1.0, 2.0]])).sum().backward()
+    weights_before_step = restored.weights.data.copy()
+    optimizer.step()
+    assert np.any(restored.weights.data != weights_before_step)
 
 
 def test_linear_load_without_bias_keeps_bias_disabled():
     source = Linear(2, 3, bias=False)
-    restored = Linear(2, 3)
+    restored = Linear(2, 3, bias=False)
 
     restored.load_weights(source.save_weights())
 
     assert restored.bias is None
     assert restored.parameters() == [restored.weights]
+
+
+def test_linear_load_rejects_a_different_bias_configuration():
+    source = Linear(2, 3, bias=False)
+    restored = Linear(2, 3)
+
+    with pytest.raises(ValueError, match="Expected 2 weights, received 1"):
+        restored.load_weights(source.save_weights())
