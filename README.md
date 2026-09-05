@@ -147,3 +147,26 @@ uv run pytest -q
 Baby PyTorch is an educational implementation. It favors readable mechanics
 and focused behavior over the performance, hardware support, and breadth of a
 production framework.
+
+## Origins: `v1` and micrograd
+
+Baby PyTorch began as a small, scalar-valued autograd engine inspired by
+Andrej Karpathy's [micrograd](https://github.com/karpathy/micrograd). That
+original implementation is preserved in the [`v1`](../../tree/v1) tag. Each
+`Value` represented one scalar in a dynamically constructed computation graph,
+and reverse-mode autodifferentiation walked that graph in topological order.
+
+The snapshot also included scalar `Neuron`, `Layer`, and `MLP` primitives,
+activation functions, mean squared error, SGD, and a notebook that trained a
+network to classify points inside or outside a circle. The current library grew
+from that foundation into the NumPy-backed `Tensor` implementation and the more
+PyTorch-like modules documented above.
+
+To explore the original version without moving a branch, check out the tag in
+detached-HEAD mode:
+
+```bash
+git switch --detach v1
+# Return to the current version when finished:
+git switch main
+```
